@@ -82,7 +82,7 @@ def register_food_item():
         inventory.append(item)
         print(f"\nSUCCESS: '{item_name}' (ID: {item['id']}) registered and priced at ${item['new_price']:.2f} ({item['discount_percent']}% OFF)!")
     else:
-        print(f"\nFAILED: '{item_name}' (ID: {item['id']}) failed to register. Reason: {result['reason']}")
+        print(f"\nFAILED: '{item_name}' (ID: {item['id']}) failed to register. \nReason: {result['reason']}")
 
 
 def display_inventory():
@@ -91,10 +91,10 @@ def display_inventory():
         print("\n[!] Inventory is currently empty. Please register items first.")
         return
 
-    print("\n" + "="*85)
+    print("\n" + "="*95)
     print(f"{'ID':<4} | {'Name':<15} | {'Category':<12} | {'Stock':<10} | {'Orig $':<8} | {'Disc %':<8} | {'Sale $':<8} | {'Status':<10}")
     print("="*85)
     for item in inventory:
         stock_str = f"{item['quantity']:.1f} kg/u"
         print(f"{item['id']:<4} | {item['name']:<15} | {item['category']:<12} | {stock_str:<10} | ${item['original_price']:<7.2f} | {item['discount_percent']:<7.1f}% | ${item['new_price']:<7.2f} | {item['status']:<10}")
-    print("="*85)
+    print("="*95)

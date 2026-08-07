@@ -49,7 +49,6 @@ Do not include markdown formatting, code blocks (e.g. ```json), or extra text.""
     )
     answer = response.choices[0].message.content
     final_result = json.loads(answer)
-    print(final_result)
     return final_result
 
 if __name__ == "__main__":
