@@ -1,4 +1,4 @@
-from database import inventory
+from database import inventory, add_item, get_inventory, customer_location
 from pricing import calculate_dynamic_discount
 from evaluator import evaluate_added_item
 
@@ -21,6 +21,8 @@ def register_food_item():
             break
         print("Invalid selection! Please enter a number between 1 and 4.")
 
+    location = customer_location()
+    
     while True:
         try:
             quantity_kg = float(input("Enter Initial Stock Quantity (in kg/units): "))
@@ -64,7 +66,7 @@ def register_food_item():
         print("Invalid choice! Please select 1, 2, or 3.")
 
     item = {
-        'id': len(inventory) + 1,
+        "location":location,
         'name': item_name,
         'category': category,
         'quantity': quantity_kg,
@@ -79,22 +81,35 @@ def register_food_item():
     result = evaluate_added_item(item)
     if result['status'] == 'APPROVED':
         calculate_dynamic_discount(item)
+        add_item(item)
         inventory.append(item)
-        print(f"\nSUCCESS: '{item_name}' (ID: {item['id']}) registered and priced at ${item['new_price']:.2f} ({item['discount_percent']}% OFF)!")
+        print(f"\nSUCCESS: '{item_name}' (category: {item['category']}) registered and priced at ${item['new_price']:.2f} ({item['discount_percent']}% OFF)!")
     else:
-        print(f"\nFAILED: '{item_name}' (ID: {item['id']}) failed to register. \nReason: {result['reason']}")
+        print(f"\nFAILED: '{item_name}' (category: {item['category']}) failed to register. \nReason: {result['reason']}")
 
 
-def display_inventory():
-    """View all registered inventory items in a formatted table."""
-    if not inventory:
-        print("\n[!] Inventory is currently empty. Please register items first.")
+def display_inventory(location):
+
+    """View all registered inventory items from Supabase in a formatted table."""
+    # Fetch data directly from Supabase
+    inventory_items = get_inventory(location)
+
+    if not inventory_items:
+        print(f"\n[!] Inventory for '{location}' is currently empty. Please register items first.")
         return
 
-    print("\n" + "="*95)
+    print(f"\nLocation: {location}")
+    print("=" * 95)
     print(f"{'ID':<4} | {'Name':<15} | {'Category':<12} | {'Stock':<10} | {'Orig $':<8} | {'Disc %':<8} | {'Sale $':<8} | {'Status':<10}")
-    print("="*85)
-    for item in inventory:
+    print("=" * 95)
+
+    for item in inventory_items:
         stock_str = f"{item['quantity']:.1f} kg/u"
-        print(f"{item['id']:<4} | {item['name']:<15} | {item['category']:<12} | {stock_str:<10} | ${item['original_price']:<7.2f} | {item['discount_percent']:<7.1f}% | ${item['new_price']:<7.2f} | {item['status']:<10}")
-    print("="*95)
+        disc_str = f"{item['discount_percent']:.1f} %"
+        orig_price_str = f"${item['original_price']:.2f}"
+        sale_price_str = f"${item['new_price']:.2f}"
+
+        # Display the real item['id'] returned from Supabase
+        print(f"{item['id']:<4} | {item['name']:<15} | {item['category']:<12} | {stock_str:<10} | {orig_price_str:<8} | {disc_str:<8} | {sale_price_str:<8} | {item['status']:<10}")
+
+    print("=" * 95)

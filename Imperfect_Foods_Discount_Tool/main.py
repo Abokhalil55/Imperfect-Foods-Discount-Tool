@@ -8,7 +8,8 @@ from inventory import register_food_item, display_inventory
 from sales import buy_food_item, view_sales_ledger
 from advice import view_storage_advice
 from analytics import generate_waste_report
-
+from database import customer_location
+from CustomerService import run_customer_service
 
 def display_menu():
     """Display Main Menu System"""
@@ -21,7 +22,8 @@ def display_menu():
     print("4. View Storage Advice & Spoilage Alert")
     print("5. View Sales & Revenue Summary Ledger")
     print("6. Generate Food Waste Diversion & SDG Impact Report")
-    print("7. Exit Application")
+    print("7. Customer Service Chat")
+    print("8. Exit Application")
     print("="*60)
 
 
@@ -29,12 +31,12 @@ def main():
     """Main Program Loop Controller"""
     while True:
         display_menu()
-        choice = input("Enter your choice (1-7): ").strip()
+        choice = input("Enter your choice (1-9): ").strip()
 
         if choice == '1':
             register_food_item()
         elif choice == '2':
-            display_inventory()
+            display_inventory(customer_location())
         elif choice == '3':
             buy_food_item()
         elif choice == '4':
@@ -44,10 +46,12 @@ def main():
         elif choice == '6':
             generate_waste_report()
         elif choice == '7':
+            run_customer_service()
+        elif choice == '8':
             print("\nThank you for supporting SDG 2 Zero Hunger! Exiting...")
             break
         else:
-            print("\n[!] Invalid selection! Please choose a number between 1 and 7.")
+            print("\n[!] Invalid selection! Please choose a number between 1 and 9.")
 
 
 if __name__ == "__main__":
