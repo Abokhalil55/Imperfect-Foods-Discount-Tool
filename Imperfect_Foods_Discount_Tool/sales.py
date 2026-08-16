@@ -2,24 +2,23 @@
 # Sales Transactions & Ledger Module
 # ==============================================================================
 
-from database import get_sales_history, get_inventory, get_item_by_id, update_item_stock, record_sale, customer_location
-from inventory import display_inventory
+from database import get_sales_history, update_item_stock, record_sale, customer_location, get_available_inventory
+from inventory import display_inventory_customer
 
 
-def buy_food_item():
-
+def buy_food_item(customer_id):
+    """Handles item purchase workflow and syncs directly with Supabase."""
     location = customer_location()
 
-
-    """Handles item purchase workflow and syncs directly with Supabase."""
-    
-    inventory_items = get_inventory(location)
+    # Fetch available inventory using location text
+    inventory_items = get_available_inventory(location)
     
     if not inventory_items:
         print(f"\n[!] No items available to buy for location: '{location}'.")
         return
 
-    display_inventory(location)
+    # Display items formatted for customer view
+    display_inventory_customer(location)
     print("\n--- [ Buy / Sell Food Item ] ---")
 
     try:
@@ -28,7 +27,8 @@ def buy_food_item():
         print("[!] Invalid ID format.")
         return
 
-    selected_item = get_item_by_id(item_id, location)
+    # Find selected item in retrieved inventory
+    selected_item = next((item for item in inventory_items if item['id'] == item_id), None)
 
     if not selected_item:
         print(f"[!] Item ID {item_id} not found at {location}.")
@@ -55,16 +55,22 @@ def buy_food_item():
     new_quantity = selected_item['quantity'] - buy_qty
     new_status = 'SOLD OUT' if new_quantity == 0 else 'AVAILABLE'
 
+    # Update item stock in inventory database
     update_item_stock(selected_item['id'], new_quantity, new_status)
 
+    # Construct sale payload aligned with sales_history schema
     sale_data = {
+        'store_id': selected_item['store_id'],
         'item_id': selected_item['id'],
+        'customer_id': customer_id,
         'item_name': selected_item['name'],
         'location': location,
         'quantity_bought': buy_qty,
         'unit_price': selected_item['new_price'],
         'total_amount': total_cost
     }
+    
+    # Record transaction in sales_history table
     record_sale(sale_data)
 
     print("\n" + "*"*45)
@@ -78,18 +84,16 @@ def buy_food_item():
     print("*"*45)
 
 
-def view_sales_ledger():
-
-    location = customer_location()
+def view_sales_ledger(store_id):
 
 
     """Displays completed sales history and revenue metrics from Supabase."""
     
     # Fetch sales history from Supabase
-    sales = get_sales_history(location)
+    sales = get_sales_history(store_id)
 
     if not sales:
-        print(f"\n[!] No purchases/sales have been made yet for '{location}'.")
+        print(f"\n[!] No purchases/sales have been made yet for '{store_id}'.")
         return
 
     # Calculate metrics using Supabase column names
@@ -97,7 +101,7 @@ def view_sales_ledger():
     total_qty_sold = sum(sale['quantity_bought'] for sale in sales)
 
     print("\n\n" + "="*78)
-    print(f"                     COMPLETED SALES LEDGER ({location})")
+    print(f"                     COMPLETED SALES LEDGER ({store_id})")
     print("="*78)
     print(f"{'Item Name':<15} | {'Category':<12} | {'Sold Qty':<10} | {'Price/u':<8} | {'Total ($)':<10}")
     print("="*78)

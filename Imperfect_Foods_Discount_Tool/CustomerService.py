@@ -1,9 +1,8 @@
-from unittest import result
 from openai import OpenAI
 import os
+import requests
 from dotenv import load_dotenv
 import json
-from  database import intrest_customers
 
 
 load_dotenv(override=True)
@@ -12,6 +11,15 @@ openAI_API_key = os.getenv("gpt_API_KEY")
 openAI_url = "https://api.openai.com/v1"
 gpt = OpenAI(base_url = openAI_url , api_key=openAI_API_key)
 
+
+pushover_user = os.getenv("PUSHOVER_USER")
+pushover_token = os.getenv("PUSHOVER_TOKEN")
+pushover_url = "https://api.pushover.net/1/messages.json"
+
+def push(text):
+    payload = {'user': pushover_user , 'token': pushover_token, "message" : text}
+    requests.post(pushover_url, data= payload)
+    
 
 
 system_prompt = """
@@ -61,6 +69,20 @@ Before calling the tool:
 
 After a successful tool call, thank the customer and set a brief expectation (e.g., "We've noted your interest and will follow up by email.").
 
+## Tool: record_unknown_question
+Call `record_unknown_question` whenever you cannot confidently answer a customer's question — whether it is outside the system's scope, beyond your knowledge, or requires information you do not have (e.g., specific inventory counts, live prices, or policies not covered above).
+
+Required before calling:
+1. **question** — the customer's exact question or a clear paraphrase of what you could not answer
+
+Before calling the tool:
+- Do not guess or fabricate an answer when you are unsure.
+- Briefly tell the customer you do not have that information yet.
+
+After a successful tool call:
+- Confirm the question has been logged for the team to review.
+- Offer to help with anything else within the Imperfect Foods system.
+
 ## Boundaries
 - Do not fabricate inventory, prices, or sales data.
 - Do not claim you completed a purchase or changed stock.
@@ -71,21 +93,20 @@ Stay helpful, accurate, and focused on reducing food waste while serving the cus
 """
 
 
-def push (email):
-    # payload = {'user': pushover_user, 'token': pushover_token, 'message': message}
-    # requests.post(pushover_url, data=payload)
-    return
+# def push (email):
+#     # payload = {'user': pushover_user, 'token': pushover_token, 'message': message}
+#     # requests.post(pushover_url, data=payload)
+#     return
 
 def record_user_details(email, spot, interested_in):
-    text = {
-        "spots":{
-            "email":email,
-            "spots":spot,
-            'interested_in': interested_in
-        }
-    }
-    intrest_customers.append(text)
+
+    push(f'Record an interest from {email}, his location is {spot} and interested in {interested_in}')
     return "User's info saved"
+
+def record_unknown_question( question, email = "Not provided"):
+    push(f"User {email}, asked ( {question} ) that I couldn't answer")
+    print ("Q has been recorded.")
+    return "Done"
 
 
 record_user_details_json = {
@@ -102,13 +123,27 @@ record_user_details_json = {
         "additionalProperties": False
     }
 }
+record_unknown_question_json = {
+    "name": "record_unknown_question",
+    "description": "Always use this tool to record any question that couldn't be answered as you didn't know the answer",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "question": {"type": "string", "description": "The question that couldn't be answered"},
+        },
+        "required": ["question"],
+        "additionalProperties": False
+    }
+}
 
 tools = [
-    {"type": "function", "function": record_user_details_json}
-    ]
+{'type': 'function', 'function': record_user_details_json},
+    {'type': 'function', 'function': record_unknown_question_json}
+]
 
 tool_map = {
     "record_user_details": record_user_details,
+    'record_unknown_question':record_unknown_question
 }
 
 def handle_tool_calls(tool_calls):
@@ -136,8 +171,8 @@ def run_customer_service():
     """Interactive customer service chat session."""
     print("\n--- [ Customer Service Chat ] ---")
     history = []
+    print("\nAsk about discounts, storage, or follow-up. Type 'back' to return to the main menu.\n")
     while True:
-        print("\nAsk about discounts, storage, or follow-up. Type 'back' to return to the main menu.\n")
         message = input("You: ").strip()
         if not message:
             continue

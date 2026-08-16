@@ -1,9 +1,9 @@
-from database import inventory, add_item, get_inventory, customer_location
+from database import add_item, get_inventory, customer_location, get_available_inventory, get_customer_purchase_history
 from pricing import calculate_dynamic_discount
 from evaluator import evaluate_added_item
 
-def register_food_item():
-    """Enter or record food information with user validation."""
+def register_food_item(store_id):
+    """Enter or record food information with store association and user validation."""
     print("\n--- [ Register Food Item ] ---")
     item_name = input("Enter Food Item Name (e.g., Banana, Spinach): ").strip()
 
@@ -66,7 +66,8 @@ def register_food_item():
         print("Invalid choice! Please select 1, 2, or 3.")
 
     item = {
-        "location":location,
+        "store_id": store_id,  # Associated store ID saved here
+        "location": location,
         'name': item_name,
         'category': category,
         'quantity': quantity_kg,
@@ -78,27 +79,26 @@ def register_food_item():
         'new_price': 0.0,
         'status': 'AVAILABLE'
     }
+    
     result = evaluate_added_item(item)
     if result['status'] == 'APPROVED':
         calculate_dynamic_discount(item)
-        add_item(item)
-        inventory.append(item)
+        add_item(item, store_id)
         print(f"\nSUCCESS: '{item_name}' (category: {item['category']}) registered and priced at ${item['new_price']:.2f} ({item['discount_percent']}% OFF)!")
     else:
         print(f"\nFAILED: '{item_name}' (category: {item['category']}) failed to register. \nReason: {result['reason']}")
 
-
-def display_inventory(location):
+def display_inventory(store_id):
 
     """View all registered inventory items from Supabase in a formatted table."""
     # Fetch data directly from Supabase
-    inventory_items = get_inventory(location)
+    inventory_items = get_inventory(store_id)
 
     if not inventory_items:
-        print(f"\n[!] Inventory for '{location}' is currently empty. Please register items first.")
+        print(f"\n[!] Inventory for '{store_id}' is currently empty. Please register items first.")
         return
 
-    print(f"\nLocation: {location}")
+    print(f"\n\nstore_id: {store_id}")
     print("=" * 95)
     print(f"{'ID':<4} | {'Name':<15} | {'Category':<12} | {'Stock':<10} | {'Orig $':<8} | {'Disc %':<8} | {'Sale $':<8} | {'Status':<10}")
     print("=" * 95)
@@ -113,3 +113,70 @@ def display_inventory(location):
         print(f"{item['id']:<4} | {item['name']:<15} | {item['category']:<12} | {stock_str:<10} | {orig_price_str:<8} | {disc_str:<8} | {sale_price_str:<8} | {item['status']:<10}")
 
     print("=" * 95)
+
+def display_inventory_customer(location):
+
+    """View all registered inventory items from Supabase in a formatted table."""
+    # Fetch data directly from Supabase
+    inventory_items = get_available_inventory(location)
+
+    if not inventory_items:
+        print(f"\n[!] Inventory for '{location}' is currently empty. Please register items first.")
+        return
+
+    print(f"\n\nLocation: {location}")
+    print("=" * 120)
+    print(f"{'ID':<4} | {'Store Name':<20} | {'Name':<15} | {'Category':<12} | {'Stock':<10} | {'Orig $':<8} | {'Disc %':<8} | {'Sale $':<8} | {'Status':<10}")
+    print("=" * 120)
+
+    for item in inventory_items:
+        stock_str = f"{item['quantity']:.1f} kg/u"
+        disc_str = f"{item['discount_percent']:.1f} %"
+        orig_price_str = f"${item['original_price']:.2f}"
+        sale_price_str = f"${item['new_price']:.2f}"
+
+        # Display the real item['id'] returned from Supabase
+        print(f"{item['id']:<4} | {item['store_name']:<20} | {item['name']:<15} | {item['category']:<12} | {stock_str:<10} | {orig_price_str:<8} | {disc_str:<8} | {sale_price_str:<8} | {item['status']:<10}")
+
+    print("=" * 120)
+
+def display_customer_purchase_history(customer_id):
+    """View personal purchase history for a specific customer in a formatted table."""
+    history_items = get_customer_purchase_history(customer_id)
+
+    if not history_items:
+        print("\n[!] No purchase history found for your account.")
+        return
+
+    print("\n--- [ My Purchase History ] ---")
+    print("=" * 120)
+    print(f"{'ID':<4} | {'Store Name':<20} | {'Item Name':<15} | {'Location':<12} | {'Bought':<10} | {'Unit $':<8} | {'Total $':<8} | {'Date':<19}")
+    print("=" * 120)
+
+    for record in history_items:
+        # Extract joined store name safely (falls back to table column if join is None)
+        store_info = record.get('stores') or {}
+        store_name = store_info.get('name') or record.get('store_name', 'N/A')
+        
+        # Format numerical quantities and currency
+        qty_str = f"{record['quantity_bought']:.1f} kg/u"
+        unit_price_str = f"${record['unit_price']:.2f}"
+        total_price_str = f"${record['total_amount']:.2f}"
+
+        # Format ISO timestamp string (YYYY-MM-DD HH:MM)
+        raw_date = str(record.get('created_at', ''))
+        date_str = raw_date[:16].replace('T', ' ') if raw_date else 'N/A'
+
+        print(
+            f"{record['id']:<4} | "
+            f"{store_name:<20} | "
+            f"{record['item_name']:<15} | "
+            f"{record['location']:<12} | "
+            f"{qty_str:<10} | "
+            f"{unit_price_str:<8} | "
+            f"{total_price_str:<8} | "
+            f"{date_str:<19}"
+        )
+
+    print("=" * 120)
+

@@ -1,19 +1,18 @@
 # In your advice / storage module
-from database import get_inventory,customer_location
+from database import get_inventory
 
-def view_storage_advice():
+def view_storage_advice(store_id):
     """Generates spoilage warnings and preservation tips for inventory items directly from Supabase."""
 
-    # 1. Fetch live items for the location from Supabase
-    location=customer_location()
-    inventory_items = get_inventory(location)
+    # 1. Fetch live items for the store from Supabase
+    inventory_items = get_inventory(store_id)
 
     if not inventory_items:
-        print(f"\n[!] No inventory items available for location: '{location}'.")
+        print(f"\n[!] No inventory items available for location: '{store_id}'.")
         return
 
     print("\n" + "="*70)
-    print(f"   STORAGE RECOMMENDATIONS & SPOILAGE PREVENTION ALERTS ({location})")
+    print(f"   STORAGE RECOMMENDATIONS & SPOILAGE PREVENTION ALERTS ({store_id})")
     print("="*70)
     
     for item in inventory_items:

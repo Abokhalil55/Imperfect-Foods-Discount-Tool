@@ -1,15 +1,14 @@
 # In your report module (e.g., reports.py or main.py)
-from database import get_inventory, get_sales_history,customer_location
+from database import get_inventory, get_sales_history
 
-def generate_waste_report():
+def generate_waste_report(store_id):
     """Calculates food waste diverted, environmental metrics, and revenue generated from Supabase."""
-    location=customer_location()
-    # 1. Fetch live inventory and sales data for the location
-    inventory_items = get_inventory(location)
-    sales_records = get_sales_history(location)
+    # 1. Fetch live inventory and sales data for the store
+    inventory_items = get_inventory(store_id)
+    sales_records = get_sales_history(store_id)
 
     if not inventory_items and not sales_records:
-        print(f"\n[!] No inventory or sales data available for location: '{location}'.")
+        print(f"\n[!] No inventory or sales data available for location: '{store_id}'.")
         return
 
     # 2. Compute metrics using Supabase column names
@@ -30,7 +29,7 @@ def generate_waste_report():
 
     # 4. Print SDG 2 Impact Report
     print("\n" + "*"*58)
-    print(f"      SDG 2 ZERO HUNGER & WASTE DIVERSION REPORT ({location})")
+    print(f"      SDG 2 ZERO HUNGER & WASTE DIVERSION REPORT ({store_id})")
     print("*"*58)
     print(f"Total Food Saved From Landfill:   {total_saved_kg:.2f} kg")
     print(f"Revenue Recovered for Sellers:   ${total_revenue:.2f}")
