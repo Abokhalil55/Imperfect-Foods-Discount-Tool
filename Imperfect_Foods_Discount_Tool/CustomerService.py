@@ -1,9 +1,9 @@
 from openai import OpenAI
 import os
 import requests
-from dotenv import load_dotenv
 import json
-
+from dotenv import load_dotenv
+from database import record_user_details_supabase
 
 load_dotenv(override=True)
 
@@ -60,8 +60,8 @@ You are the Customer Service Agent for the Imperfect Foods Discount & Sales Syst
 ## Tool: record_user_details
 Call `record_user_details` ONLY when the customer clearly wants follow-up (e.g., notifications, newsletter, callback, or more info by email) AND has provided:
 1. **email** — a valid email address
-2. **spot** — their location or area (city, neighborhood, or region)
-3. **interested_in** — what they care about (deals, discounts) in (Produce, Bakery & Grains, Dairy & Chilled Items ,and Prepared / Packaged Meals) he has to choose only one category more than one choose is not accepted.
+2. **spot** — their location or area (Cyberjaya, Putrajaya, Petaling jaya, Puchong) has to choose only one of these 4 locations
+3. **interested_in** — what they interested in from (Produce, Bakery & Grains, Dairy & Chilled Items ,and Prepared / Packaged Meals) he has to choose only one category more than one choose is not accepted.
 
 Before calling the tool:
 - Confirm you have all three fields. If anything is missing, ask one short follow-up question.
@@ -83,6 +83,24 @@ After a successful tool call:
 - Confirm the question has been logged for the team to review.
 - Offer to help with anything else within the Imperfect Foods system.
 
+## Tool: customer complaint
+Call 'customer_complaint' ONLY when a customer wants to log or report a complaint about a specific store and has provided:
+
+Required before calling:
+ 1 - email — a valid email address of the customer
+ 2 - store_name — the specific store name where the issue occurred
+ 3 - location - the store location, (Cyberjaya, Putrajaya, Petaling jaya, Puchong) has to choose only one of these 4 locations
+ 4 - complaint — details describing the issue or negative experience
+
+
+Before calling the tool:
+ - Confirm you have all three required fields. If any field is missing, ask a short clarifying question.
+ - Express empathy for the issue and inform the customer you are logging the details for review.
+
+After a successful tool call:
+ - Reassure the customer that their feedback has been recorded.
+ - Provide clear expectations (e.g., "Our support team will review your complaint and reach out to you via email.").
+
 ## Boundaries
 - Do not fabricate inventory, prices, or sales data.
 - Do not claim you completed a purchase or changed stock.
@@ -92,21 +110,18 @@ After a successful tool call:
 Stay helpful, accurate, and focused on reducing food waste while serving the customer.
 """
 
-
-# def push (email):
-#     # payload = {'user': pushover_user, 'token': pushover_token, 'message': message}
-#     # requests.post(pushover_url, data=payload)
-#     return
-
 def record_user_details(email, spot, interested_in):
-
+    record_user_details_supabase(email, spot, interested_in)
     push(f'Record an interest from {email}, his location is {spot} and interested in {interested_in}')
     return "User's info saved"
 
 def record_unknown_question( question, email = "Not provided"):
     push(f"User {email}, asked ( {question} ) that I couldn't answer")
-    print ("Q has been recorded.")
-    return "Done"
+    return "Q has been recorded."
+
+def customer_complaint(email,location , store_name, complaint):
+    push(f"User {email} reported a complaint about {store_name} located in {location}: {complaint}")
+    return "Complaint recorded."
 
 
 record_user_details_json = {
@@ -117,7 +132,7 @@ record_user_details_json = {
         "properties": {
             "email": {"type": "string", "description": "The email address of this user"},
             "spot": {"type": "string", "description": "The user's spot (location)"},
-            "interested_in": {"type": "string", "description": "What the user is interested in (e.g., produce deals, bakery discounts, bulk buying)"}
+            "interested_in": {"type": "string", "description": "What the user is interested in (produce, bakery & grains, Dairy & Chilled Items, or Prepared / Packaged Meals), should be one of these four choices only."}
         },
         "required": ["email", "spot", "interested_in"],
         "additionalProperties": False
@@ -136,14 +151,32 @@ record_unknown_question_json = {
     }
 }
 
+customer_complaint_json = {
+    "name": "customer_complaint",
+    "description": "Use this tool to record a customer's complaint about a specific store",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "email": {"type": "string", "description": "The email address of the customer"},
+            "store_name": {"type": "string", "description": "The name of the store the complaint is about"},
+            'location': {'type': 'string', 'description': 'The store location'},
+            "complaint": {"type": "string", "description": "The details of the complaint"},
+        },
+        "required": ["email", "store_name", "location", "complaint"],
+        "additionalProperties": False
+    }
+}
+
 tools = [
-{'type': 'function', 'function': record_user_details_json},
-    {'type': 'function', 'function': record_unknown_question_json}
+    {'type': 'function', 'function': record_user_details_json},
+    {'type': 'function', 'function': record_unknown_question_json},
+    {'type': 'function', 'function': customer_complaint_json},
 ]
 
 tool_map = {
     "record_user_details": record_user_details,
-    'record_unknown_question':record_unknown_question
+    'record_unknown_question':record_unknown_question,
+    'customer_complaint': customer_complaint,
 }
 
 def handle_tool_calls(tool_calls):

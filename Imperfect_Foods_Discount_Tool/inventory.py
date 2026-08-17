@@ -1,11 +1,11 @@
-from database import add_item, get_inventory, customer_location, get_available_inventory, get_customer_purchase_history
+from database import add_item, get_inventory, customer_location, get_available_inventory, get_customer_purchase_history, process_item_and_notifications
 from pricing import calculate_dynamic_discount
 from evaluator import evaluate_added_item
 
 def register_food_item(store_id):
     """Enter or record food information with store association and user validation."""
     print("\n--- [ Register Food Item ] ---")
-    item_name = input("Enter Food Item Name (e.g., Banana, Spinach): ").strip()
+    location = customer_location()
 
     print("\nSelect Food Category:")
     print("1. Produce (Fruits & Vegetables)")
@@ -13,7 +13,7 @@ def register_food_item(store_id):
     print("3. Dairy & Chilled Items")
     print("4. Prepared / Packaged Meals")
 
-    category_map = {'1': 'Produce', '2': 'Bakery', '3': 'Dairy', '4': 'Prepared Food'}
+    category_map = {'1': 'Produce', '2': 'Bakery & Grains', '3': 'Dairy & Chilled Items', '4': 'Prepared / Packaged Meals'}
     while True:
         cat_choice = input("Select Category (1-4): ").strip()
         if cat_choice in category_map:
@@ -21,8 +21,8 @@ def register_food_item(store_id):
             break
         print("Invalid selection! Please enter a number between 1 and 4.")
 
-    location = customer_location()
-    
+    item_name = input("Enter Food Item Name (e.g., Banana, Spinach): ").strip()
+
     while True:
         try:
             quantity_kg = float(input("Enter Initial Stock Quantity (in kg/units): "))
@@ -66,13 +66,14 @@ def register_food_item(store_id):
         print("Invalid choice! Please select 1, 2, or 3.")
 
     item = {
-        "store_id": store_id,  # Associated store ID saved here
+        "store_id": store_id,
         "location": location,
         'name': item_name,
         'category': category,
         'quantity': quantity_kg,
         'initial_quantity': quantity_kg,
         'original_price': original_price,
+        'initial_days_left': days_left,
         'days_left': days_left,
         'grade': grade,
         'discount_percent': 0.0,
@@ -84,6 +85,7 @@ def register_food_item(store_id):
     if result['status'] == 'APPROVED':
         calculate_dynamic_discount(item)
         add_item(item, store_id)
+        process_item_and_notifications(item)
         print(f"\nSUCCESS: '{item_name}' (category: {item['category']}) registered and priced at ${item['new_price']:.2f} ({item['discount_percent']}% OFF)!")
     else:
         print(f"\nFAILED: '{item_name}' (category: {item['category']}) failed to register. \nReason: {result['reason']}")
@@ -91,7 +93,6 @@ def register_food_item(store_id):
 def display_inventory(store_id):
 
     """View all registered inventory items from Supabase in a formatted table."""
-    # Fetch data directly from Supabase
     inventory_items = get_inventory(store_id)
 
     if not inventory_items:
@@ -99,9 +100,9 @@ def display_inventory(store_id):
         return
 
     print(f"\n\nstore_id: {store_id}")
-    print("=" * 95)
-    print(f"{'ID':<4} | {'Name':<15} | {'Category':<12} | {'Stock':<10} | {'Orig $':<8} | {'Disc %':<8} | {'Sale $':<8} | {'Status':<10}")
-    print("=" * 95)
+    print("=" * 135)
+    print(f"{'ID':<4} | {'Location':<17} | {'Category':<12}| {'Name':<15} | {'Days Left':<15} | {'Stock':<10} | {'Orig $':<8} | {'Disc %':<8} | {'Sale $':<8} | {'Status':<10}")
+    print("=" * 135)
 
     for item in inventory_items:
         stock_str = f"{item['quantity']:.1f} kg/u"
@@ -110,14 +111,13 @@ def display_inventory(store_id):
         sale_price_str = f"${item['new_price']:.2f}"
 
         # Display the real item['id'] returned from Supabase
-        print(f"{item['id']:<4} | {item['name']:<15} | {item['category']:<12} | {stock_str:<10} | {orig_price_str:<8} | {disc_str:<8} | {sale_price_str:<8} | {item['status']:<10}")
+        print(f"{item['id']:<4} | {item['location']:<17} | {item['category']:<12} | {item['name']:<15} | {item['days_left']:<15} | {stock_str:<10} | {orig_price_str:<8} | {disc_str:<8} | {sale_price_str:<8} | {item['status']:<10}")
 
-    print("=" * 95)
+    print("=" * 135)
 
 def display_inventory_customer(location):
 
     """View all registered inventory items from Supabase in a formatted table."""
-    # Fetch data directly from Supabase
     inventory_items = get_available_inventory(location)
 
     if not inventory_items:
@@ -125,9 +125,9 @@ def display_inventory_customer(location):
         return
 
     print(f"\n\nLocation: {location}")
-    print("=" * 120)
-    print(f"{'ID':<4} | {'Store Name':<20} | {'Name':<15} | {'Category':<12} | {'Stock':<10} | {'Orig $':<8} | {'Disc %':<8} | {'Sale $':<8} | {'Status':<10}")
-    print("=" * 120)
+    print("=" * 140)
+    print(f"{'ID':<4} | {'Store Name':<20} | {'Category':<12} | {'Name':<15} | {'Days left':<15} | {'Stock':<10} | {'Orig $':<8} | {'Disc %':<8} | {'Sale $':<8} | {'Status':<10}")
+    print("=" * 140)
 
     for item in inventory_items:
         stock_str = f"{item['quantity']:.1f} kg/u"
@@ -136,9 +136,9 @@ def display_inventory_customer(location):
         sale_price_str = f"${item['new_price']:.2f}"
 
         # Display the real item['id'] returned from Supabase
-        print(f"{item['id']:<4} | {item['store_name']:<20} | {item['name']:<15} | {item['category']:<12} | {stock_str:<10} | {orig_price_str:<8} | {disc_str:<8} | {sale_price_str:<8} | {item['status']:<10}")
+        print(f"{item['id']:<4} | {item['store_name']:<20} | {item['category']:<12} | {item['name']:<15} | {item['days_left']:<15}  | {stock_str:<10} | {orig_price_str:<8} | {disc_str:<8} | {sale_price_str:<8} | {item['status']:<10}")
 
-    print("=" * 120)
+    print("=" * 140)
 
 def display_customer_purchase_history(customer_id):
     """View personal purchase history for a specific customer in a formatted table."""
@@ -154,11 +154,9 @@ def display_customer_purchase_history(customer_id):
     print("=" * 120)
 
     for record in history_items:
-        # Extract joined store name safely (falls back to table column if join is None)
-        store_info = record.get('stores') or {}
+        store_info = record.get('stores')
         store_name = store_info.get('name') or record.get('store_name', 'N/A')
         
-        # Format numerical quantities and currency
         qty_str = f"{record['quantity_bought']:.1f} kg/u"
         unit_price_str = f"${record['unit_price']:.2f}"
         total_price_str = f"${record['total_amount']:.2f}"

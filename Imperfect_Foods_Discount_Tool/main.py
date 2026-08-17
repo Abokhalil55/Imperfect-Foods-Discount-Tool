@@ -1,35 +1,32 @@
-# ==============================================================================
+
+
+
 # BIT2083 FUNDAMENTALS OF COMPUTATIONAL THINKING
 # Final Project: Imperfect Foods Discount & Sales Management System
 # SDG Target: SDG 2 - Zero Hunger
-# ==============================================================================
+
+
 
 import re
 from inventory import register_food_item, display_inventory, display_inventory_customer, display_customer_purchase_history
 from sales import buy_food_item, view_sales_ledger
 from advice import view_storage_advice
 from analytics import generate_waste_report
-from database import  customer_location
+from database import  customer_location, sync_all_inventory_items
 from CustomerService import run_customer_service
 from userAuth import login_user, sign_up_user
 
-# Global state to store session details after authentication
 current_user = None
-
-# Allowed public email domains for registration
+# Allowed public email domains
 ALLOWED_DOMAINS = ["@gmail.com", "@yahoo.com", "@outlook.com", "@hotmail.com", "@icloud.com"]
-
-ALLOWED_DOMAINS = ["@gmail.com", "@yahoo.com", "@outlook.com", "@hotmail.com"]
 
 
 def is_valid_email(email):
     """Validate email syntax and restrict domain to standard providers."""
-    # Standard email regex pattern check
     pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
     if not re.match(pattern, email):
         return False, "Invalid email address structure (e.g., example@domain.com)."
 
-    # Domain verification check
     email_lower = email.lower()
     if not any(email_lower.endswith(domain) for domain in ALLOWED_DOMAINS):
         allowed_list = ", ".join(ALLOWED_DOMAINS)
@@ -55,7 +52,6 @@ def auth_menu():
         if choice == '1':
             email = input("Enter email: ").strip()
 
-            # Validate email structure and domain before attempting login
             valid, err_msg = is_valid_email(email)
             if not valid:
                 print(f"\n[!] Login Error: {err_msg}")
@@ -76,13 +72,13 @@ def auth_menu():
         elif choice == '2':
             email = input("Enter email: ").strip()
             
-            # Validate email structure and domain before proceeding
+           
             valid, err_msg = is_valid_email(email)
             if not valid:
                 print(f"\n[!] Registration Error: {err_msg}")
                 continue
 
-            password = input("Enter password: ").strip()
+            password = input("Password should be at least 6 digits\characters.\nEnter password: ").strip()
             full_name = input("Enter full name: ").strip()
             
             print("\nSelect Role:")
@@ -134,7 +130,6 @@ def display_menu():
     print(f" IMPERFECT FOODS SYSTEM - Logged in as: {name} ({role.upper()})")
     print("=" * 60)
     
-    # Seller-specific menu actions
     if role == 'seller':
         print("1. Register Imperfect / Near-Expiry Food Item")
         print("2. Update My Store Inventory & Dynamic Discounts")
@@ -143,7 +138,6 @@ def display_menu():
         print("5. Generate Food Waste Diversion & SDG Impact Report")
         print("6. Logout")
         print("7. Exit Application")
-    # Customer-specific menu actions
     elif role == 'customer':
         print("1. View Available Food Items / Market")
         print("2. Buy Food Item (Purchase)")
@@ -153,15 +147,17 @@ def display_menu():
         print("6. Exit Application")
     
     # elif role == 'admin-manager-123':
+    #  manager level
         
     print("=" * 60)
 
 
 def main():
+    sync_all_inventory_items()
+    
     """Main Program Loop Controller"""
     global current_user
     
-    # Force authentication before proceeding into application features
     auth_menu()
 
     while True:
@@ -169,9 +165,10 @@ def main():
         role = current_user['role']
         choice = input("Enter your choice: ").strip()
 
-        # Logic Branch for Sellers
         if role == 'seller':
             if choice == '1':
+                register_food_item(store_id=current_user['store_id'])
+            if choice == '2':
                 register_food_item(store_id=current_user['store_id'])
             elif choice == '3':
                 display_inventory(store_id=current_user['store_id'])
@@ -189,7 +186,6 @@ def main():
             else:
                 print("\n[!] Invalid selection! Please select a valid option from the menu.")
 
-        # Logic Branch for Customers
         elif role == 'customer':
             if choice == '1':
                 display_inventory_customer(customer_location())

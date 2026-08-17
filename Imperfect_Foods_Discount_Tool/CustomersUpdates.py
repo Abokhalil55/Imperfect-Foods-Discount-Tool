@@ -21,12 +21,6 @@ def push(text):
         },
     )
 
-# def Customer_updates(item):
-#     if item['category'] == intrest_customers['category']:
-#         message = f"Hi {intrest_customers['email']}, we would like to inform you that there are some {intrest_customers['category']} available near to your location with a good discount."
-#         email_sender = ''
-#         email_receiver = ''
-
 
 def record_unknown_question(question):
     push(f"Recording {question} asked that I couldn't answer")

@@ -10,7 +10,7 @@ def buy_food_item(customer_id):
     """Handles item purchase workflow and syncs directly with Supabase."""
     location = customer_location()
 
-    # Fetch available inventory using location text
+    
     inventory_items = get_available_inventory(location)
     
     if not inventory_items:
@@ -27,7 +27,6 @@ def buy_food_item(customer_id):
         print("[!] Invalid ID format.")
         return
 
-    # Find selected item in retrieved inventory
     selected_item = next((item for item in inventory_items if item['id'] == item_id), None)
 
     if not selected_item:
@@ -58,7 +57,6 @@ def buy_food_item(customer_id):
     # Update item stock in inventory database
     update_item_stock(selected_item['id'], new_quantity, new_status)
 
-    # Construct sale payload aligned with sales_history schema
     sale_data = {
         'store_id': selected_item['store_id'],
         'item_id': selected_item['id'],
@@ -70,7 +68,6 @@ def buy_food_item(customer_id):
         'total_amount': total_cost
     }
     
-    # Record transaction in sales_history table
     record_sale(sale_data)
 
     print("\n" + "*"*45)
@@ -96,15 +93,14 @@ def view_sales_ledger(store_id):
         print(f"\n[!] No purchases/sales have been made yet for '{store_id}'.")
         return
 
-    # Calculate metrics using Supabase column names
     total_revenue = sum(sale['total_amount'] for sale in sales)
-    total_qty_sold = sum(sale['quantity_bought'] for sale in sales)
+    total_quantity_sold = sum(sale['quantity_bought'] for sale in sales)
 
-    print("\n\n" + "="*78)
+    print("\n\n" + "="*90)
     print(f"                     COMPLETED SALES LEDGER ({store_id})")
-    print("="*78)
-    print(f"{'Item Name':<15} | {'Category':<12} | {'Sold Qty':<10} | {'Price/u':<8} | {'Total ($)':<10}")
-    print("="*78)
+    print("="*90)
+    print(f"{'Item Name':<15} | {'Location':<17} | {'Category':<12} | {'Sold Qty':<10} | {'Price/u':<8} | {'Total ($)':<10}")
+    print("="*90)
 
     for sale in sales:
         # Extract category from join relation (if inventory record still exists)
@@ -114,9 +110,9 @@ def view_sales_ledger(store_id):
         unit_price_str = f"${sale['unit_price']:.2f}"
         total_amount_str = f"${sale['total_amount']:.2f}"
 
-        print(f"{sale['item_name']:<15} | {category:<12} | {sold_qty_str:<10} | {unit_price_str:<8} | {total_amount_str:<10}")
+        print(f"{sale['item_name']:<15} | {sale['location']:<17} | {category:<12} | {sold_qty_str:<10} | {unit_price_str:<8} | {total_amount_str:<10}")
 
-    print("="*78)
-    print(f"TOTAL UNITS SOLD:    {total_qty_sold:.1f} kg/units")
+    print("="*90)
+    print(f"TOTAL UNITS SOLD:    {total_quantity_sold:.1f} kg/units")
     print(f"TOTAL REVENUE EARNED: ${total_revenue:.2f}")
-    print("="*78)
+    print("="*90)

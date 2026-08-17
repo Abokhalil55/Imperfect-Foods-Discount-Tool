@@ -1,4 +1,4 @@
-# In your report module (e.g., reports.py or main.py)
+
 from database import get_inventory, get_sales_history
 
 def generate_waste_report(store_id):
@@ -8,7 +8,7 @@ def generate_waste_report(store_id):
     sales_records = get_sales_history(store_id)
 
     if not inventory_items and not sales_records:
-        print(f"\n[!] No inventory or sales data available for location: '{store_id}'.")
+        print(f"\n[!] No inventory or sales data available for id: '{store_id}'.")
         return
 
     # 2. Compute metrics using Supabase column names
