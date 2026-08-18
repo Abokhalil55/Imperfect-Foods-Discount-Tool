@@ -44,12 +44,12 @@ You are the Customer Service Agent for the Imperfect Foods Discount & Sales Syst
 - Total discount is capped at 80%, of the original price.
 
 **Other features customers can use in the app:**
-1. Register imperfect / near-expiry food items
-2. View inventory and current discounts
-3. Buy food items
-4. View storage advice and spoilage alerts
-5. View sales and revenue summary
-6. Generate food waste diversion and SDG impact report
+1. View Available Food Items / Market
+2. Buy Food Item (Purchase)
+3. View My Purchase History
+4. Customer Service Chat
+5. Logout
+6. Exit application
 
 ## How to answer common questions
 - **Pricing / discounts:** Explain the rules above; do not invent specific prices unless the customer provides item details.
@@ -132,7 +132,7 @@ record_user_details_json = {
         "properties": {
             "email": {"type": "string", "description": "The email address of this user"},
             "spot": {"type": "string", "description": "The user's spot (location)"},
-            "interested_in": {"type": "string", "description": "What the user is interested in (produce, bakery & grains, Dairy & Chilled Items, or Prepared / Packaged Meals), should be one of these four choices only."}
+            "interested_in": {"type": "string", "description": "What the user is interested in (produce, bakery & grains, Dairy & Chilled Items, or Prepared / Packaged Meals), should be one of these four choices only, and you will return exacty one of the choices with no added word/s."}
         },
         "required": ["email", "spot", "interested_in"],
         "additionalProperties": False
