@@ -1,12 +1,4 @@
 
-
-
-# BIT2083 FUNDAMENTALS OF COMPUTATIONAL THINKING
-# Final Project: Imperfect Foods Discount & Sales Management System
-# SDG Target: SDG 2 - Zero Hunger
-
-
-
 import re
 from inventory import register_food_item, display_inventory, display_inventory_customer, display_customer_purchase_history
 from sales import buy_food_item, view_sales_ledger
@@ -15,6 +7,7 @@ from analytics import generate_waste_report
 from database import  customer_location, sync_all_inventory_items
 from CustomerService import run_customer_service
 from userAuth import login_user, sign_up_user
+from Update_del import update_items_seller
 
 current_user = None
 # Allowed public email domains
@@ -78,7 +71,7 @@ def auth_menu():
                 print(f"\n[!] Registration Error: {err_msg}")
                 continue
 
-            password = input("Password should be at least 6 digits\characters.\nEnter password: ").strip()
+            password = input("Password should be at least 6 digits. \ncharacters.Enter password: ").strip()
             full_name = input("Enter full name: ").strip()
             
             print("\nSelect Role:")
@@ -169,7 +162,7 @@ def main():
             if choice == '1':
                 register_food_item(store_id=current_user['store_id'])
             if choice == '2':
-                register_food_item(store_id=current_user['store_id'])
+                update_items_seller(store_id=current_user['store_id'])
             elif choice == '3':
                 display_inventory(store_id=current_user['store_id'])
             elif choice == '4':

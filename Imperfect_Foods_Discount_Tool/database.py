@@ -62,6 +62,16 @@ def update_item_stock(item_id, new_quantity, new_status):
     )
     return response.data
 
+def delete_store_item(store_id, item_id):
+    """Delete a specific inventory record matching both store_id and item_id."""
+    response = (
+        supabase.table('inventory')
+        .delete()
+        .eq('store_id', store_id)
+        .eq('id', item_id)
+        .execute()
+    )
+    return response.data
 
 def record_sale(sale_data, store_id):
     """Insert a completed transaction record linked to a specific store into Supabase sales_history table."""
@@ -134,7 +144,7 @@ def sync_all_inventory_items():
     now = datetime.now(timezone.utc)
     
     for item in items:
-        if item.get('status') == 'expired':
+        if item.get('status') == 'expired' or item.get('status') == 'SOLD OUT':
             continue
 
         created_at = datetime.fromisoformat(item['created_at'].replace('Z', '+00:00'))
