@@ -4,36 +4,42 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="JimatRasa is a Malaysian marketplace for rescued, imperfect, and near-expiry food.">
-  <meta name="theme-color" content="#173d2b">
+  <meta name="theme-color" content="#a52a24">
   <title>JimatRasa — Rescue food, save more</title>
   <link rel="stylesheet" href="/Ui/style.css">
 </head>
 <body>
+  <!--
+    THESIS: JimatRasa is a working food market, not an artisanal startup page; price, expiry, stock, inventory and revenue set the hierarchy.
+    OWN-WORLD: Cool receipt paper, ink, market red, one Archivo family, square controls, shelf rules and ledger columns.
+    STORY: Customers compare a rescue offer in seconds; sellers read the shop as an operating ledger and act without decorative detours.
+    FIRST VIEWPORT: A factual market bulletin sits beside the account form; inside the app, a compact masthead leads directly to the active work surface.
+    FORM: Malaysian hypermarket circular meets stock ledger; grounded direction 4, seed b8685868.
+    FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+  -->
+  <a id="skip-link" class="skip-link" href="#auth-task">Skip to main content</a>
   <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 
   <main id="auth-screen" class="auth-shell">
     <section class="auth-story" aria-labelledby="brand-title">
-      <div class="brand brand--light">
-        <span class="brand-mark" aria-hidden="true"></span>
+      <div class="brand">
+        <span class="brand-ticket" aria-hidden="true">JR</span>
         <span>JimatRasa</span>
       </div>
 
       <div class="auth-story__copy">
-        <p class="eyebrow">Local rescue market · Malaysia · SDG 2</p>
-        <h1 id="brand-title">Great food deserves another chance.</h1>
-        <p>Shop imperfect and near-expiry food from local sellers at smart rescue prices — before good food becomes waste.</p>
+        <h1 id="brand-title">Food near you.<br>Price and shelf life up front.</h1>
+        <p>JimatRasa lists imperfect and near-expiry food from local sellers in four Malaysian locations.</p>
       </div>
 
-      <div class="produce-label" aria-label="JimatRasa promise">
-        <span class="produce-label__number">01</span>
-        <div>
-          <strong>Rescue local. Spend less. Waste less.</strong>
-          <span>Simple tools for Malaysian sellers and value-conscious shoppers.</span>
-        </div>
+      <div class="market-bulletin" aria-label="JimatRasa account types and locations">
+        <div><strong>Customer</strong><span>Compare price, discount, stock and days left.</span></div>
+        <div><strong>Seller</strong><span>List food, manage inventory and review sales.</span></div>
+        <div><strong>Available in</strong><span>Cyberjaya · Petaling Jaya · Putrajaya · Puchong</span></div>
       </div>
     </section>
 
-    <section class="auth-task">
+    <section id="auth-task" class="auth-task">
       <div class="auth-panel">
         <div class="auth-tabs" role="tablist" aria-label="Account access">
           <button class="auth-tab is-active" type="button" role="tab" aria-selected="true" data-auth-tab="login">Login</button>
@@ -42,8 +48,8 @@
 
         <form id="login-form" class="auth-form" data-auth-form="login">
           <header class="form-heading">
-            <p class="eyebrow">Welcome back</p>
-            <h2>Sign in to JimatRasa.</h2>
+            <h2>Sign in</h2>
+            <p>Open your customer market or seller workspace.</p>
           </header>
           <label>Email
             <input name="email" type="email" autocomplete="email" required>
@@ -57,8 +63,8 @@
 
         <form id="signup-form" class="auth-form is-hidden" data-auth-form="signup">
           <header class="form-heading">
-            <p class="eyebrow">Join the rescue</p>
-            <h2>Create your account.</h2>
+            <h2>Create an account</h2>
+            <p>Choose the role that matches how you use JimatRasa.</p>
           </header>
           <div class="form-grid">
             <label>Full name
@@ -98,9 +104,9 @@
   </main>
 
   <div id="app-shell" class="app-shell is-hidden">
-    <aside class="sidebar">
+    <header class="topbar">
       <div class="brand">
-        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-ticket" aria-hidden="true">JR</span>
         <span>JimatRasa</span>
       </div>
       <nav id="app-nav" class="app-nav" aria-label="Main navigation"></nav>
@@ -108,13 +114,13 @@
         <span id="account-name"></span>
         <small id="account-role"></small>
       </div>
-    </aside>
+    </header>
 
-    <main class="app-main">
+    <main id="main-content" class="app-main">
       <header class="app-header">
         <div>
-          <p id="view-kicker" class="eyebrow"></p>
           <h1 id="view-title">Overview</h1>
+          <p id="view-kicker" class="view-description"></p>
         </div>
         <div id="header-actions" class="header-actions"></div>
       </header>
@@ -127,10 +133,9 @@
     <section class="modal__panel">
       <header class="modal__header">
         <div>
-          <p class="eyebrow">JimatRasa</p>
           <h2 id="modal-title"></h2>
         </div>
-        <button class="icon-button" type="button" data-close-modal aria-label="Close dialog">×</button>
+        <button class="icon-button" type="button" data-close-modal aria-label="Close dialog">Close</button>
       </header>
       <div id="modal-body"></div>
     </section>

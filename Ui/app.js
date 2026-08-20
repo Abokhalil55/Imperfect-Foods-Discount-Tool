@@ -7,6 +7,8 @@ const modal = document.querySelector("#modal");
 const modalBody = document.querySelector("#modal-body");
 const modalTitle = document.querySelector("#modal-title");
 const toastRegion = document.querySelector("#toast-region");
+const skipLink = document.querySelector("#skip-link");
+let modalOpener = null;
 
 const locations = ["Cyberjaya", "Petaling Jaya", "Putrajaya", "Puchong"];
 const currencyFormatter = new Intl.NumberFormat("en-MY", {
@@ -101,13 +103,14 @@ function setButtonLoading(button, loading, label = "Working...") {
 }
 
 function loadingState() {
-  return `<div class="loading-state" aria-label="Loading content">
+  return `<div class="loading-state" role="status" aria-label="Loading content">
+    <span class="visually-hidden">Loading content</span>
     <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
   </div>`;
 }
 
 function emptyState(title, message, action = "") {
-  return `<div class="empty-state"><p class="eyebrow">Nothing here yet</p><h2>${escapeHtml(title)}</h2><p>${escapeHtml(message)}</p>${action}</div>`;
+  return `<section class="empty-state"><h2>${escapeHtml(title)}</h2><p>${escapeHtml(message)}</p>${action}</section>`;
 }
 
 function statusLabel(status) {
@@ -125,6 +128,7 @@ function setViewHeader(kicker, title, actions = "") {
 function showAuth(mode = "login") {
   appShell.classList.add("is-hidden");
   authScreen.classList.remove("is-hidden");
+  skipLink.href = "#auth-task";
   switchAuth(mode);
 }
 
@@ -153,6 +157,7 @@ function showApp() {
 
   authScreen.classList.add("is-hidden");
   appShell.classList.remove("is-hidden");
+  skipLink.href = "#main-content";
   document.querySelector("#account-name").textContent = state.user.full_name || state.user.email;
   document.querySelector("#account-role").textContent = state.user.role;
 
@@ -179,8 +184,12 @@ function logout() {
 async function loadView(view) {
   state.view = view;
   document.querySelectorAll("[data-view]").forEach(button => {
-    button.classList.toggle("is-active", button.dataset.view === view);
+    const active = button.dataset.view === view;
+    button.classList.toggle("is-active", active);
+    if (active) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
   });
+  viewContent.setAttribute("aria-busy", "true");
   viewContent.innerHTML = loadingState();
 
   const renderers = {
@@ -203,6 +212,8 @@ async function loadView(view) {
       `<button class="button button--secondary" data-retry-view>Try again</button>`
     );
     showToast(error.message, "error");
+  } finally {
+    viewContent.setAttribute("aria-busy", "false");
   }
 }
 
@@ -283,6 +294,8 @@ function salesLineChart(points) {
     <title>${escapeHtml(shortDate(point.date))}: ${escapeHtml(money(point.revenue))} · ${point.orders} order${point.orders === 1 ? "" : "s"}</title>
   </circle>`).join("");
 
+  const accessiblePoints = points.map(point => `<li>${escapeHtml(shortDate(point.date))}: ${escapeHtml(money(point.revenue))}, ${point.orders} order${point.orders === 1 ? "" : "s"}</li>`).join("");
+
   return `<div class="chart-wrap">
     <svg class="sales-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Revenue trend chart for recent sales">
       ${grid}
@@ -291,6 +304,7 @@ function salesLineChart(points) {
       ${dots}
       ${labels}
     </svg>
+    <ul class="visually-hidden">${accessiblePoints}</ul>
   </div>`;
 }
 
@@ -317,12 +331,13 @@ function sellerKpis(sales, inventory, impact) {
   const averageOrder = transactions ? totalRevenue / transactions : 0;
   const totalQuantity = sales.reduce((sum, sale) => sum + Number(sale.quantity_bought || 0), 0);
   const available = inventory.filter(item => String(item.status).toUpperCase() === "AVAILABLE").length;
+  const topSale = Math.max(...sales.map(sale => Number(sale.total_amount || 0)), 0);
 
-  return { totalRevenue, transactions, averageOrder, totalQuantity, available, impact };
+  return { totalRevenue, transactions, averageOrder, totalQuantity, available, topSale, impact };
 }
 
 async function renderOverview() {
-  setViewHeader("Seller dashboard", "Overview", `<button class="button button--primary" data-open-add>Add item</button>`);
+  setViewHeader("Revenue, stock and impact from completed sales.", "Overview", `<button class="button button--primary" data-open-add>Add item</button>`);
 
   const [inventoryResult, salesResult, impactResult] = await Promise.all([
     api("seller_inventory", { store_id: state.user.store_id }),
@@ -341,46 +356,33 @@ async function renderOverview() {
   const topCategory = categories[0];
 
   viewContent.innerHTML = `
-    <div class="kpi-grid">
-      <article class="kpi-card kpi-card--feature">
-        <span class="kpi-card__label">Revenue recovered</span>
-        <strong class="kpi-card__value">${money(kpis.totalRevenue)}</strong>
-        <span class="kpi-card__meta">Across ${kpis.transactions} completed transaction${kpis.transactions === 1 ? "" : "s"}</span>
+    <section class="seller-register" aria-label="Seller summary">
+      <article class="revenue-register">
+        <span>Revenue recovered</span>
+        <strong>${money(kpis.totalRevenue)}</strong>
+        <small>${kpis.transactions} completed transaction${kpis.transactions === 1 ? "" : "s"}</small>
       </article>
-      <article class="kpi-card">
-        <span class="kpi-card__label">Available listings</span>
-        <strong class="kpi-card__value">${kpis.available}</strong>
-        <span class="kpi-card__meta">${inventory.length} total item${inventory.length === 1 ? "" : "s"} listed</span>
-      </article>
-      <article class="kpi-card">
-        <span class="kpi-card__label">Average order</span>
-        <strong class="kpi-card__value">${money(kpis.averageOrder)}</strong>
-        <span class="kpi-card__meta">Average recovered value per purchase</span>
-      </article>
-      <article class="kpi-card">
-        <span class="kpi-card__label">Food saved</span>
-        <strong class="kpi-card__value">${quantity(impact.food_saved)} kg</strong>
-        <span class="kpi-card__meta">${quantity(impact.co2_avoided)} kg CO₂e estimated avoided</span>
-      </article>
-    </div>
+      <dl class="metric-ledger">
+        <div><dt>Available listings</dt><dd>${kpis.available}</dd><small>${inventory.length} total listed</small></div>
+        <div><dt>Average order</dt><dd>${money(kpis.averageOrder)}</dd><small>Per purchase</small></div>
+        <div><dt>Food saved</dt><dd>${quantity(impact.food_saved)} kg</dd><small>Sold, not wasted</small></div>
+        <div><dt>CO₂ avoided</dt><dd>${quantity(impact.co2_avoided)} kg</dd><small>Food saved × 2.5</small></div>
+        <div><dt>Quantity sold</dt><dd>${quantity(kpis.totalQuantity)}</dd><small>kg / units</small></div>
+        <div><dt>Highest sale</dt><dd>${money(kpis.topSale)}</dd><small>Single transaction</small></div>
+      </dl>
+    </section>
 
-    <div class="dashboard-grid">
-      <article class="chart-card">
-        <div class="chart-head">
-          <div><p class="eyebrow">Sales pulse</p><h2>Recent revenue trend</h2><p>Up to the latest 10 selling days.</p></div>
-          <span class="chart-badge">MYR</span>
-        </div>
+    <section class="analysis-ledger">
+      <article class="chart-section">
+        <div class="chart-head"><div><h2>Recent revenue</h2><p>Latest 10 selling days</p></div><span class="chart-unit">MYR</span></div>
         ${salesLineChart(revenueTrend)}
       </article>
-
-      <article class="chart-card">
-        <div class="chart-head">
-          <div><p class="eyebrow">Performance mix</p><h2>Revenue by category</h2><p>Which rescued-food categories are contributing most.</p></div>
-        </div>
+      <article class="chart-section">
+        <div class="chart-head"><div><h2>Category performance</h2><p>Revenue contribution by food category</p></div></div>
         ${categoryBars(categories)}
-        <div class="insight-strip"><span class="insight-dot" aria-hidden="true"></span><div>${topCategory ? `<strong>${escapeHtml(topCategory.category)}</strong> is currently your strongest category at ${money(topCategory.revenue)}.` : "Your category mix will appear after the first completed sale."}</div></div>
+        <p class="analysis-note">${topCategory ? `<strong>${escapeHtml(topCategory.category)}</strong> currently leads at ${money(topCategory.revenue)}.` : "Category performance appears after the first completed sale."}</p>
       </article>
-    </div>`;
+    </section>`;
 }
 
 function inventoryTable(items) {
@@ -405,7 +407,7 @@ function inventoryTable(items) {
 }
 
 async function renderInventory() {
-  setViewHeader("Seller workspace", "Inventory", `<button class="button button--primary" data-open-add>Add item</button>`);
+  setViewHeader("Current stock, pricing, expiry and availability.", "Inventory", `<button class="button button--primary" data-open-add>Add item</button>`);
   const result = await api("seller_inventory", { store_id: state.user.store_id });
   if (state.view !== "inventory") return;
 
@@ -415,7 +417,7 @@ async function renderInventory() {
 }
 
 async function renderSales() {
-  setViewHeader("Seller analytics", "Sales");
+  setViewHeader("Completed transactions and revenue evidence.", "Sales");
   const result = await api("sales", { store_id: state.user.store_id });
   if (state.view !== "sales") return;
 
@@ -432,26 +434,29 @@ async function renderSales() {
   const topSale = Math.max(...sales.map(sale => Number(sale.total_amount || 0)), 0);
 
   viewContent.innerHTML = `
-    <div class="kpi-grid">
-      <article class="kpi-card kpi-card--feature"><span class="kpi-card__label">Total revenue</span><strong class="kpi-card__value">${money(result.total_revenue)}</strong><span class="kpi-card__meta">Recovered from rescued inventory</span></article>
-      <article class="kpi-card"><span class="kpi-card__label">Transactions</span><strong class="kpi-card__value">${transactionCount}</strong><span class="kpi-card__meta">Completed customer purchases</span></article>
-      <article class="kpi-card"><span class="kpi-card__label">Average order</span><strong class="kpi-card__value">${money(averageOrder)}</strong><span class="kpi-card__meta">Average transaction value</span></article>
-      <article class="kpi-card"><span class="kpi-card__label">Quantity sold</span><strong class="kpi-card__value">${quantity(result.total_quantity_sold)}</strong><span class="kpi-card__meta">kg / units moved · top sale ${money(topSale)}</span></article>
-    </div>
+    <section class="sales-register">
+      <article class="revenue-register"><span>Total revenue</span><strong>${money(result.total_revenue)}</strong><small>Recovered from rescued inventory</small></article>
+      <dl class="metric-ledger metric-ledger--sales">
+        <div><dt>Transactions</dt><dd>${transactionCount}</dd><small>Completed purchases</small></div>
+        <div><dt>Average order</dt><dd>${money(averageOrder)}</dd><small>Per transaction</small></div>
+        <div><dt>Quantity sold</dt><dd>${quantity(result.total_quantity_sold)}</dd><small>kg / units</small></div>
+        <div><dt>Highest sale</dt><dd>${money(topSale)}</dd><small>Single transaction</small></div>
+      </dl>
+    </section>
 
-    <div class="dashboard-grid">
-      <article class="chart-card">
-        <div class="chart-head"><div><p class="eyebrow">Revenue</p><h2>Sales over time</h2><p>Recent completed sales grouped by day.</p></div><span class="chart-badge">MYR</span></div>
+    <section class="analysis-ledger">
+      <article class="chart-section">
+        <div class="chart-head"><div><h2>Sales over time</h2><p>Completed sales grouped by day</p></div><span class="chart-unit">MYR</span></div>
         ${salesLineChart(revenueTrend)}
       </article>
-      <article class="chart-card">
-        <div class="chart-head"><div><p class="eyebrow">Category mix</p><h2>Revenue contribution</h2><p>Revenue generated by each food category.</p></div></div>
+      <article class="chart-section">
+        <div class="chart-head"><div><h2>Revenue contribution</h2><p>Revenue by food category</p></div></div>
         ${categoryBars(categories)}
       </article>
-    </div>
+    </section>
 
     <section class="section-block">
-      <div class="section-heading"><div><p class="eyebrow">Ledger</p><h2>Completed transactions</h2></div></div>
+      <div class="section-heading"><h2>Completed transactions</h2></div>
       <div class="table-wrap"><table>
         <thead><tr><th>Date</th><th>Item</th><th>Location</th><th>Category</th><th>Quantity</th><th>Unit price</th><th>Total</th></tr></thead>
         <tbody>${sales.map(sale => `<tr>
@@ -468,39 +473,37 @@ async function renderSales() {
 }
 
 async function renderImpact() {
-  setViewHeader("SDG 2 progress", "Impact");
+  setViewHeader("Measured from completed rescued-food sales.", "Impact");
   const result = await api("impact", { store_id: state.user.store_id });
   if (state.view !== "impact") return;
 
   const impact = result.impact;
   const index = String(impact.impact_index || "NEEDS IMPROVEMENT").replace(/[🌟👍⚠️]/gu, "").trim();
 
-  viewContent.innerHTML = `<div class="impact-layout">
-    <article class="impact-index"><div><p class="eyebrow">Impact index</p><strong>${escapeHtml(index)}</strong></div><p>Calculated from the amount of rescued food sold through your store.</p></article>
-    <div class="impact-stats">
-      <article class="impact-stat"><span>Food saved</span><strong>${quantity(impact.food_saved)} kg</strong></article>
-      <article class="impact-stat"><span>Revenue recovered</span><strong>${money(impact.revenue_recovered)}</strong></article>
-      <article class="impact-stat"><span>CO₂ avoided</span><strong>${quantity(impact.co2_avoided)} kg</strong></article>
-      <article class="impact-stat"><span>Transactions</span><strong>${impact.transactions}</strong></article>
-    </div>
-  </div>`;
+  viewContent.innerHTML = `<section class="impact-layout">
+    <header class="impact-index"><span>Impact index</span><strong>${escapeHtml(index)}</strong><p>Calculated from rescued food sold through this store.</p></header>
+    <dl class="impact-stats">
+      <div class="impact-stat"><dt>Food saved</dt><dd>${quantity(impact.food_saved)} kg</dd></div>
+      <div class="impact-stat"><dt>Revenue recovered</dt><dd>${money(impact.revenue_recovered)}</dd></div>
+      <div class="impact-stat"><dt>CO₂ avoided</dt><dd>${quantity(impact.co2_avoided)} kg</dd><small>Food saved × 2.5</small></div>
+      <div class="impact-stat"><dt>Transactions</dt><dd>${impact.transactions}</dd></div>
+    </dl>
+  </section>`;
 }
 
 function productCards(items) {
-  return `<div class="product-grid">${items.map(item => `<article class="product-card">
-    <div class="product-card__meta"><span>${escapeHtml(item.category)}</span><span>${escapeHtml(item.days_left)} days left</span></div>
-    <h3>${escapeHtml(item.name)}</h3>
-    <p class="product-card__store">${escapeHtml(item.store_name)}</p>
-    <div class="product-card__price">
-      <div><strong>${money(item.new_price)}</strong><small><span class="old-price">${money(item.original_price)}</span> original</small></div>
-      <span class="discount-tag">${quantity(item.discount_percent)}% off</span>
-    </div>
-    <div class="product-card__footer"><span>${quantity(item.quantity)} kg/u available</span><button class="button button--primary button--small" data-buy-item="${escapeHtml(item.id)}">Buy</button></div>
+  return `<div class="market-list">${items.map(item => `<article class="market-item">
+    <div class="market-item__identity"><span class="category-label">${escapeHtml(item.category)}</span><h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.store_name)}</p></div>
+    <div class="market-item__fact"><span>Days left</span><strong class="expiry ${Number(item.days_left) <= 2 ? "expiry--urgent" : ""}">${escapeHtml(item.days_left)}</strong></div>
+    <div class="market-item__fact"><span>Available</span><strong>${quantity(item.quantity)} kg/u</strong></div>
+    <div class="market-item__price"><strong>${money(item.new_price)}</strong><small><span class="old-price">${money(item.original_price)}</span> original</small></div>
+    <span class="discount-tag">Save ${quantity(item.discount_percent)}%</span>
+    <button class="button button--primary button--small" data-buy-item="${escapeHtml(item.id)}">Buy</button>
   </article>`).join("")}</div>`;
 }
 
 async function renderMarket() {
-  setViewHeader("Customer market", "Rescue something good");
+  setViewHeader(`Available food in ${state.location}.`, "Market");
   viewContent.innerHTML = `<div class="market-toolbar">
     <label>Shopping location<select id="market-location">${locations.map(location => `<option ${location === state.location ? "selected" : ""}>${location}</option>`).join("")}</select></label>
     <p class="market-note">Available stock changes after each purchase. Prices are shown in Malaysian Ringgit and already include the dynamic rescue discount.</p>
@@ -516,7 +519,7 @@ async function renderMarket() {
 }
 
 async function renderPurchases() {
-  setViewHeader("Customer account", "My Purchases");
+  setViewHeader("Receipts from completed purchases.", "My purchases");
   const result = await api("purchase_history", { customer_id: state.user.id });
   if (state.view !== "my-purchases") return;
 
@@ -540,7 +543,7 @@ async function renderPurchases() {
 }
 
 async function renderSupport() {
-  setViewHeader("Customer help", "Support");
+  setViewHeader("Ask about food, discounts, notifications or complaints.", "Support");
   const welcome = state.chatHistory.length ? "" : `<div class="chat-message">Ask JimatRasa about discounts, food storage, notifications, complaints, or how the rescued-food market works.</div>`;
 
   viewContent.innerHTML = `<div class="chat-shell">
@@ -553,17 +556,24 @@ async function renderSupport() {
 }
 
 function openModal(title, content) {
+  modalOpener = document.activeElement;
   modalTitle.textContent = title;
   modalBody.innerHTML = content;
   modal.classList.remove("is-hidden");
+  appShell.setAttribute("inert", "");
+  authScreen.setAttribute("inert", "");
   document.body.style.overflow = "hidden";
   window.setTimeout(() => modal.querySelector("input, select, button")?.focus(), 20);
 }
 
 function closeModal() {
   modal.classList.add("is-hidden");
+  appShell.removeAttribute("inert");
+  authScreen.removeAttribute("inert");
   document.body.style.overflow = "";
   modalBody.innerHTML = "";
+  modalOpener?.focus();
+  modalOpener = null;
 }
 
 function openAddItem() {
@@ -807,7 +817,21 @@ document.addEventListener("submit", async event => {
 });
 
 document.addEventListener("keydown", event => {
-  if (event.key === "Escape" && !modal.classList.contains("is-hidden")) closeModal();
+  if (modal.classList.contains("is-hidden")) return;
+  if (event.key === "Escape") closeModal();
+  if (event.key === "Tab") {
+    const focusable = [...modal.querySelectorAll("button, input, select, textarea, [href], [tabindex]:not([tabindex='-1'])")]
+      .filter(element => !element.disabled);
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
 });
 
 if (state.user) showApp();
