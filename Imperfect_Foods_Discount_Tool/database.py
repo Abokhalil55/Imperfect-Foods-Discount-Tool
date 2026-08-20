@@ -1,12 +1,12 @@
-# ==============================================================================
-# Global In-Memory Database State
-# ==============================================================================
-from supabase import create_client, Client
 import os
+from datetime import datetime, timedelta, timezone
+
 from dotenv import load_dotenv
-from datetime import datetime, timezone, timedelta
-from pricing import calculate_dynamic_discount
+from supabase import Client, create_client
+
 from notifications import send_notification_email
+from pricing import calculate_dynamic_discount
+
 
 load_dotenv(override=True)
 
@@ -17,73 +17,72 @@ supabase: Client = create_client(url, key)
 
 def add_item(item, store_id):
     """Add a new inventory item linked to a specific store."""
-    item['store_id'] = store_id
-    response = supabase.table('inventory').insert(item).execute()
-    print(f"Done added item to store {store_id} in Supabase")
+    item["store_id"] = store_id
+    response = supabase.table("inventory").insert(item).execute()
+    print(f"Added item to store {store_id} in Supabase")
     return response.data
 
 
 def get_inventory(store_id):
     """Fetch all inventory items for a specific store ordered by ID."""
     response = (
-        supabase.table('inventory')
-        .select('*')
-        .eq('store_id', store_id)
-        .order('id')
+        supabase.table("inventory")
+        .select("*")
+        .eq("store_id", store_id)
+        .order("id")
         .execute()
     )
     return response.data
 
 
 def get_item_by_id(item_id, store_id):
-    """Fetch a single item from Supabase by ID and store_id."""
+    """Fetch a single item by item ID and store ID."""
     response = (
-        supabase.table('inventory')
-        .select('*')
-        .eq('id', item_id)
-        .eq('store_id', store_id)
+        supabase.table("inventory")
+        .select("*")
+        .eq("id", item_id)
+        .eq("store_id", store_id)
         .execute()
     )
     return response.data[0] if response.data else None
 
 
 def update_item_stock(item_id, new_quantity, new_status):
-    """Update stock quantity and status for a specific inventory item by its primary key ID."""
+    """Update the stock quantity and availability status of one inventory item."""
     response = (
-        supabase.table('inventory')
-        .update({'quantity': new_quantity, 'status': new_status})
-        .eq('id', item_id)
+        supabase.table("inventory")
+        .update({"quantity": new_quantity, "status": new_status})
+        .eq("id", item_id)
         .execute()
     )
     return response.data
 
 
 def delete_store_item(store_id, item_id):
-    """Delete a specific inventory record matching both store_id and item_id."""
+    """Delete a specific inventory item belonging to a store."""
     response = (
-        supabase.table('inventory')
+        supabase.table("inventory")
         .delete()
-        .eq('store_id', store_id)
-        .eq('id', item_id)
+        .eq("store_id", store_id)
+        .eq("id", item_id)
         .execute()
     )
     return response.data
 
 
-def record_sale(sale_data, store_id):
-    """Insert a completed transaction record linked to a specific store."""
-    sale_data['store_id'] = store_id
-    response = supabase.table('sales_history').insert(sale_data).execute()
+def record_sale(sale_data):
+    """Insert one completed transaction into sales_history."""
+    response = supabase.table("sales_history").insert(sale_data).execute()
     return response.data
 
 
 def get_sales_history(store_id):
-    """Fetch completed sales history with item categories for a specific store."""
+    """Fetch completed sales with item categories for a specific store."""
     response = (
-        supabase.table('sales_history')
-        .select('*, inventory(category)')
-        .eq('store_id', store_id)
-        .order('created_at', desc=True)
+        supabase.table("sales_history")
+        .select("*, inventory(category)")
+        .eq("store_id", store_id)
+        .order("created_at", desc=True)
         .execute()
     )
     return response.data
@@ -92,125 +91,145 @@ def get_sales_history(store_id):
 def get_customer_purchase_history(customer_id):
     """Fetch personal purchase history for a specific customer."""
     response = (
-        supabase.table('sales_history')
-        .select('*, inventory(name, category), stores(name, location)')
-        .eq('customer_id', customer_id)
-        .order('created_at', desc=True)
+        supabase.table("sales_history")
+        .select("*, inventory(name, category), stores(name, location)")
+        .eq("customer_id", customer_id)
+        .order("created_at", desc=True)
         .execute()
     )
     return response.data
 
 
 def get_available_inventory(location=None):
-    """Fetch available inventory items for customers to view or buy."""
-    query = supabase.table('inventory').select('*, stores(name)').eq('status', 'AVAILABLE')
+    """Fetch inventory that is currently available, optionally filtered by location."""
+    query = supabase.table("inventory").select("*, stores(name)").eq("status", "AVAILABLE")
     if location:
-        query = query.eq('location', location)
-    response = query.order('id').execute()
+        query = query.eq("location", location)
+    response = query.order("id").execute()
     return response.data
 
 
 def customer_location():
-    print("\nSelect Selling Location:")
+    """Prompt the CLI user to choose one supported Malaysian location."""
+    print("\nSelect Location:")
     print("1. Cyberjaya")
     print("2. Petaling Jaya")
     print("3. Putrajaya")
     print("4. Puchong")
 
-    location_map = {'1': 'Cyberjaya', '2': 'Petaling Jaya', '3': 'Putrajaya', '4': 'Puchong'}
+    location_map = {
+        "1": "Cyberjaya",
+        "2": "Petaling Jaya",
+        "3": "Putrajaya",
+        "4": "Puchong",
+    }
+
     while True:
-        cat_choice = input("Select Category (1-4): ").strip()
-        if cat_choice in location_map:
-            return location_map[cat_choice]
+        location_choice = input("Select Location (1-4): ").strip()
+        if location_choice in location_map:
+            return location_map[location_choice]
         print("Invalid selection! Please enter a number between 1 and 4.")
 
 
 def sync_all_inventory_items():
-    """Update days_left, status, and price for all active inventory items."""
-    response = supabase.table('inventory').select('*').execute()
+    """Update days left, status, and dynamic price for active inventory items."""
+    response = supabase.table("inventory").select("*").execute()
     items = response.data
     now = datetime.now(timezone.utc)
 
     for item in items:
-        if item.get('status') in ('expired', 'SOLD OUT'):
+        if item.get("status") in ("expired", "SOLD OUT"):
             continue
 
-        created_at = datetime.fromisoformat(item['created_at'].replace('Z', '+00:00'))
+        created_at = datetime.fromisoformat(item["created_at"].replace("Z", "+00:00"))
         elapsed_days = (now - created_at).days
-        initial_days = item['initial_days_left']
+        initial_days = item["initial_days_left"]
         calculated_days_left = max(0, initial_days - elapsed_days)
-        new_status = 'expired' if calculated_days_left == 0 else item['status']
+        new_status = "expired" if calculated_days_left == 0 else item["status"]
 
-        if calculated_days_left != item['days_left'] or new_status != item['status']:
-            item['days_left'] = calculated_days_left
-            item['status'] = new_status
+        if calculated_days_left != item["days_left"] or new_status != item["status"]:
+            item["days_left"] = calculated_days_left
+            item["status"] = new_status
             item = calculate_dynamic_discount(item)
-            supabase.table('inventory').update({
-                'days_left': item['days_left'],
-                'status': item['status'],
-                'discount_percent': item['discount_percent'],
-                'new_price': item['new_price'],
-            }).eq('id', item['id']).execute()
+            (
+                supabase.table("inventory")
+                .update(
+                    {
+                        "days_left": item["days_left"],
+                        "status": item["status"],
+                        "discount_percent": item["discount_percent"],
+                        "new_price": item["new_price"],
+                    }
+                )
+                .eq("id", item["id"])
+                .execute()
+            )
 
 
 def record_user_details_supabase(email, spot, interested_in):
-    """Save one stock-interest request without failing on an existing identical request."""
+    """Save one stock-interest request without duplicating an existing request."""
     email = (email or "").strip().lower()
     spot = (spot or "").strip()
     interested_in = (interested_in or "").strip()
 
     existing = (
-        supabase.table('notifications')
-        .select('id')
-        .eq('email', email)
-        .eq('location', spot)
-        .eq('interested_in', interested_in)
+        supabase.table("notifications")
+        .select("id")
+        .eq("email", email)
+        .eq("location", spot)
+        .eq("interested_in", interested_in)
         .limit(1)
         .execute()
     )
     if existing.data:
-        return {"status": "already_saved", "id": existing.data[0]['id']}
+        return {"status": "already_saved", "id": existing.data[0]["id"]}
 
     try:
-        response = supabase.table('notifications').insert({
-            'email': email,
-            'location': spot,
-            'interested_in': interested_in,
-        }).execute()
+        response = (
+            supabase.table("notifications")
+            .insert(
+                {
+                    "email": email,
+                    "location": spot,
+                    "interested_in": interested_in,
+                }
+            )
+            .execute()
+        )
         return {"status": "saved", "data": response.data}
     except Exception as error:
-        if '23505' in str(error) or 'duplicate key' in str(error).lower():
+        if "23505" in str(error) or "duplicate key" in str(error).lower():
             return {"status": "already_saved"}
         raise
 
 
 def get_store_name(store_id):
-    response = supabase.table('stores').select('name').eq('id', store_id).single().execute()
-    return response.data['name'] if response.data else None
+    """Return the display name of a store."""
+    response = supabase.table("stores").select("name").eq("id", store_id).single().execute()
+    return response.data["name"] if response.data else None
 
 
 def process_item_and_notifications(item):
     """Send matching stock alerts without breaking item creation if email delivery fails."""
-    table_name = 'notifications'
+    table_name = "notifications"
 
     seven_days_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
-    supabase.table(table_name).delete().lt('created_at', seven_days_ago).execute()
+    supabase.table(table_name).delete().lt("created_at", seven_days_ago).execute()
 
-    item_location = item.get('location')
-    item_category = item.get('category', '').strip().lower()
-    store_id = item.get('store_id')
-    store_name = get_store_name(store_id)
+    item_location = item.get("location")
+    item_category = item.get("category", "").strip().lower()
+    store_name = get_store_name(item.get("store_id"))
 
-    response = supabase.table(table_name).select('*').eq('location', item_location).execute()
+    response = supabase.table(table_name).select("*").eq("location", item_location).execute()
     notification_rows = response.data or []
     matched_ids = []
 
     for row in notification_rows:
-        interested_in = row.get('interested_in', '').strip().lower()
+        interested_in = row.get("interested_in", "").strip().lower()
         if interested_in != item_category:
             continue
 
-        recipient_email = row.get('email')
+        recipient_email = row.get("email")
         if not recipient_email:
             continue
 
@@ -218,33 +237,28 @@ def process_item_and_notifications(item):
             sent = send_notification_email(
                 email=recipient_email,
                 store_location=item_location,
-                interested_in=row.get('interested_in'),
+                interested_in=row.get("interested_in"),
                 store_name=store_name,
             )
             if sent:
-                matched_ids.append(row['id'])
+                matched_ids.append(row["id"])
         except Exception as error:
             print(f"Matching stock email failed for {recipient_email}: {error}")
 
     if matched_ids:
-        supabase.table(table_name).delete().in_('id', matched_ids).execute()
+        supabase.table(table_name).delete().in_("id", matched_ids).execute()
         print(f"Sent and cleared {len(matched_ids)} fulfilled notification request(s).")
 
     return {"sent": len(matched_ids)}
 
 
-############################################################################################################
-############################################################################################################
-############################################################################################################
-
-
 def get_sales_by_location(location):
-    """Fetch completed sales history for all stores in a specific location."""
+    """Fetch completed sales across all stores for a specific location."""
     response = (
-        supabase.table('sales_history')
-        .select('*, inventory(category)')
-        .eq('location', location)
-        .order('created_at', desc=True)
+        supabase.table("sales_history")
+        .select("*, inventory(category)")
+        .eq("location", location)
+        .order("created_at", desc=True)
         .execute()
     )
     return response.data
@@ -253,15 +267,9 @@ def get_sales_by_location(location):
 def get_all_sales():
     """Fetch complete sales history across all stores and locations."""
     response = (
-        supabase.table('sales_history')
-        .select('*, inventory(category)')
-        .order('created_at', desc=True)
+        supabase.table("sales_history")
+        .select("*, inventory(category)")
+        .order("created_at", desc=True)
         .execute()
     )
-    return response.data
-
-
-def record_sale(sale_data):
-    """Insert a completed transaction into the sales_history table."""
-    response = supabase.table('sales_history').insert(sale_data).execute()
     return response.data
