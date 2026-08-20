@@ -1,118 +1,218 @@
-# JimatRasa — Discount & Sales Management System
+# JimatRasa — Surplus Food Marketplace
 
-JimatRasa is a surplus-food management application written in Python with an additional lightweight web interface. Integrated with OpenAI GPT models and Supabase, it allows food sellers to register imperfect and near-expiry inventory across multiple Malaysian locations, automatically evaluate items against quality rules, compute dynamic discounts, process sales in **Malaysian Ringgit (MYR)**, track seller KPIs, and measure sustainability impact aligned with **UN SDG 2 (Zero Hunger)**.
+JimatRasa is a Python-based surplus-food marketplace aligned with **UN SDG 2: Zero Hunger**. It helps Malaysian food sellers list imperfect or near-expiry food, automatically validates submissions, applies dynamic rescue discounts, records purchases, tracks seller sales performance, and notifies customers when requested food categories become available.
 
----
+The project includes both:
 
-### 4.1 Purpose of the application
+- a **Python CLI**, which demonstrates the fundamental programming requirements directly; and
+- a lightweight **web interface** built with vanilla HTML, CSS and JavaScript, backed by the same Python business logic through `api/index.py`.
 
-**JimatRasa** was developed to minimize food waste, streamline seller registration, and automate quality control in surplus food distribution.
-
-* **Automated Quality Control:** Leverages an AI Review Agent (`evaluator.py`) to validate registered items against rules for category matching, quantity, realistic MYR pricing, expiry window, and cosmetic grading before adding them to inventory.
-* **Dynamic Pricing Engine:** Automatically computes tiered discounts in `pricing.py` based on an item's remaining shelf life and cosmetic grade to encourage rapid sales of nearing-expiry food.
-* **Cloud Database Persistence:** Stores inventory and sales records in **Supabase** via `database.py`, with location-scoped queries for Cyberjaya, Petaling Jaya, Putrajaya, and Puchong.
-* **Sales & Seller Analytics:** Processes purchases in `sales.py`, updates stock levels, and the web seller dashboard visualizes revenue, transactions, average order value, quantity sold, revenue trends, and category performance.
-* **Storage & Spoilage Alerts:** Generates category-specific preservation tips and urgency warnings in `advice.py` based on days remaining until expiry.
-* **Environmental Impact Tracking:** Produces real-time analytics in `analytics.py` calculating total food weight saved, revenue recovered, and estimated CO₂ emissions avoided (~2.5 kg CO₂e per kg of food diverted).
-* **AI Customer Service:** Provides an interactive GPT-powered chat in `CustomerService.py` to answer questions about discounts, storage, and SDG impact, and to capture follow-up interest from customers.
-* **Web Interface:** `Ui/` contains the separate vanilla HTML/CSS/JavaScript presentation layer while Python remains the main backend and assignment implementation.
+Python remains the core backend and computational implementation.
 
 ---
 
-### 4.2 Tech Stack
+## Problem and purpose
 
-* **Programming Language:** Python 3.10+
-* **Web UI:** Vanilla HTML, CSS, and JavaScript
-* **External Libraries & APIs:**
-  * `openai` — GPT model integration for quality evaluation and customer service chat.
-  * `python-dotenv` — Management of environment variables and API keys.
-  * `supabase` — Cloud PostgreSQL backend for inventory and sales persistence.
-* **Core Concepts & Architecture:**
-  * **Modular Design:** Clear separation of concerns across dedicated Python modules.
-  * **Structured JSON Validation:** Enforces OpenAI `response_format={"type": "json_object"}` in the evaluator to guarantee parseable approval/rejection responses.
-  * **Location-Scoped Data:** Inventory and sales are filtered by selling location selected at runtime.
-  * **Function-Calling Agent:** Customer service uses OpenAI tool calls to record interested customer details (email, location, category preference).
-  * **Environmental Analytics Logic:** Algorithmic calculation of food waste diversion metrics and CO₂ mitigation ratios.
+Usable food is often discarded because of cosmetic imperfections, short remaining shelf life, or difficulty matching surplus stock with nearby buyers. JimatRasa addresses this by giving sellers a structured way to list these items and giving customers a location-based market for purchasing them at dynamically reduced prices.
 
-#### Project Structure
+The system aims to:
 
-| Module | Responsibility |
-|---|---|
-| `main.py` | CLI menu loop and application entry point |
-| `inventory.py` | Food item registration and inventory display |
-| `evaluator.py` | AI review agent for item validation |
-| `pricing.py` | Dynamic discount calculation engine |
-| `sales.py` | Purchase workflow and sales ledger |
-| `advice.py` | Storage recommendations and spoilage alerts |
-| `analytics.py` | SDG 2 waste diversion and impact report |
-| `database.py` | Supabase client and data access layer |
-| `CustomerService.py` | AI customer service chat with tool calling |
-| `CustomersUpdates.py` | Customer email notification helper (in progress) |
-| `../api/index.py` | Thin Python web API adapter for Vercel |
-| `../Ui/` | Separate HTML/CSS/JavaScript interface |
-
-#### Discount Rules
-
-Discounts are calculated from two factors and capped at **80%**:
-
-| Days Left | Discount Added |
-|---|---|
-| 1 day | +45% |
-| 2–3 days | +30% |
-| 4–7 days | +15% |
-
-| Cosmetic Grade | Discount Added |
-|---|---|
-| Grade A (minor flaw) | +5% |
-| Grade B (moderate flaw) | +15% |
-| Grade C (high flaw / near expiry) | +25% |
-
-#### Food Categories
-
-1. **Produce** — Fruits & Vegetables  
-2. **Bakery** — Bakery & Grains  
-3. **Dairy** — Dairy & Chilled Items  
-4. **Prepared Food** — Prepared / Packaged Meals  
+1. reduce avoidable food waste by connecting surplus inventory with customers;
+2. automate consistent discount calculation using expiry and cosmetic grade;
+3. provide sellers with inventory, sales and KPI visibility;
+4. let customers browse and purchase available food by location;
+5. provide customer support and stock-interest notifications; and
+6. measure food-diversion impact related to SDG 2.
 
 ---
 
-### 4.3 How to use
+## Computational Thinking
 
-**1. Prerequisites**
+JimatRasa demonstrates the four core computational-thinking concepts required by the project:
 
-Ensure Python 3 is installed on your local system, along with an active OpenAI API key and a configured Supabase project. Verify your Python installation:
+### Decomposition
 
-```bash
-python --version
+The overall problem is separated into focused Python modules for authentication, inventory, evaluation, pricing, sales, analytics, notifications, customer support and database access.
+
+### Pattern recognition
+
+The system identifies recurring patterns such as:
+
+- shorter shelf life requiring a larger discount;
+- cosmetic grade affecting the discount level;
+- repeated customer interest by food category and location;
+- sales patterns by date, category and region; and
+- inventory status changing when quantity reaches zero or shelf life expires.
+
+### Abstraction
+
+Reusable functions hide implementation details. For example, the UI and CLI call functions such as `calculate_dynamic_discount()`, `get_available_inventory()`, `record_sale()` and `generate_waste_report()` without needing to know the internal database or calculation steps.
+
+### Algorithm design
+
+Important algorithms include:
+
+- dynamic discount calculation;
+- purchase validation and stock reduction;
+- automatic expiry/day-left synchronization;
+- notification matching by category and location; and
+- seller KPI and impact calculations from sales records.
+
+---
+
+## Main features
+
+### Seller
+
+- Register imperfect / near-expiry food
+- AI-assisted item validation
+- Automatic dynamic discount calculation
+- Manage inventory and SOLD OUT status
+- View sales ledger
+- View web dashboard KPIs and sales graphs
+- View category revenue contribution
+- Generate food-diversion and SDG impact report
+
+### Customer
+
+- Browse available food by Malaysian location
+- Purchase available inventory
+- View purchase history
+- Use AI customer support
+- Ask about live inventory availability
+- Register interest in unavailable categories
+- Receive confirmation and matching-stock emails when configured
+
+Supported locations:
+
+- Cyberjaya
+- Petaling Jaya
+- Putrajaya
+- Puchong
+
+All prices are handled as **Malaysian Ringgit (MYR / RM)**.
+
+---
+
+## Dynamic discount algorithm
+
+The discount combines remaining shelf life and cosmetic grade, with a maximum discount of **80%**.
+
+| Days left | Discount added |
+|---|---:|
+| 1 day | 45% |
+| 2–3 days | 30% |
+| 4–7 days | 15% |
+
+| Cosmetic grade | Discount added |
+|---|---:|
+| Grade A — minor flaw | 5% |
+| Grade B — moderate flaw | 15% |
+| Grade C — high flaw / near expiry | 25% |
+
+Example:
+
+```text
+Original price = RM 10.00
+Days left = 2       -> +30%
+Grade B             -> +15%
+Total discount      -> 45%
+Sale price          -> RM 5.50
 ```
 
-**2. Install Dependencies**
+---
+
+## Python concepts demonstrated
+
+The source code demonstrates:
+
+- variables and Python data types;
+- arithmetic, comparison and logical operators;
+- `if`, `elif`, and `else` conditions;
+- `for` and `while` loops;
+- extensive user-defined functions;
+- menu-driven CLI interaction using `input()`;
+- lists, dictionaries and structured records;
+- input validation and `try` / `except` error handling;
+- formatted output;
+- modular programming across multiple Python files;
+- external API and database integration.
+
+---
+
+## Project structure
+
+| File / folder | Responsibility |
+|---|---|
+| `main.py` | Python CLI entry point, authentication menu and role-based menu loop |
+| `inventory.py` | Item registration, inventory display and purchase-history output |
+| `pricing.py` | Dynamic discount algorithm |
+| `sales.py` | Purchase workflow and seller sales ledger |
+| `evaluator.py` | AI-assisted validation of seller item submissions |
+| `analytics.py` | Food-diversion, revenue and impact calculations |
+| `database.py` | Supabase data-access functions |
+| `userAuth.py` | Signup and login using Supabase Auth |
+| `Update_del.py` | Seller inventory update and deletion workflow |
+| `CustomerService.py` | AI customer support and live stock checks |
+| `notifications.py` | Confirmation and matching-stock email delivery |
+| `advice.py` | Reusable storage-advice logic |
+| `../api/index.py` | Python HTTP adapter used by the web interface and Vercel |
+| `../Ui/` | Vanilla HTML, CSS and JavaScript presentation layer |
+
+---
+
+## Technology stack
+
+- **Python 3.12**
+- **Supabase** for authentication and PostgreSQL-backed persistence
+- **OpenAI API** for item evaluation and customer-support tool calling
+- **Vanilla HTML/CSS/JavaScript** for the optional enhanced web interface
+- **Vercel** for web deployment
+- **Gmail SMTP** and **Pushover** for optional notifications
+
+Python dependencies are listed in the repository-level `requirements.txt`.
+
+---
+
+## Run locally
+
+### 1. Install dependencies
+
+From the repository root:
 
 ```bash
-pip install openai python-dotenv supabase requests
+pip install -r requirements.txt
 ```
 
-**3. Configure Environment Variables**
+### 2. Configure environment variables
 
-Create a `.env` file with the required keys:
+Create a local `.env` file. The file is ignored by Git and must not be committed.
+
+Required for the core cloud application:
 
 ```env
-gpt_API_KEY=your_openai_api_key_here
-SUPABASE_URL=your_supabase_project_url
-SUPABASE_API=your_supabase_api_key
+SUPABASE_URL=your_supabase_url
+SUPABASE_API=your_supabase_key
+gpt_API_KEY=your_openai_api_key
 ```
 
-Additional notification credentials are required when using the Pushover/Gmail notification features.
+Optional notification features also use:
 
-**4. Run the Python CLI**
+```env
+PUSHOVER_USER=your_pushover_user
+PUSHOVER_TOKEN=your_pushover_token
+sender_email=your_sender_email
+Google_app_pass=your_google_app_password
+```
 
-From the `Imperfect_Foods_Discount_Tool` directory:
+### 3. Run the Python CLI
 
 ```bash
+cd Imperfect_Foods_Discount_Tool
 python main.py
 ```
 
-**5. Run the Web Interface Locally**
+### 4. Run the web application locally
 
 From the repository root:
 
@@ -120,14 +220,14 @@ From the repository root:
 python api/index.py
 ```
 
-Then open `http://127.0.0.1:8000`.
+Then open:
 
-**6. Main Features**
-
-Seller features include registering imperfect / near-expiry food, managing inventory, viewing the sales ledger, viewing seller KPIs and charts in the web dashboard, and generating the SDG impact report. Customer features include browsing available food by location, purchasing items, viewing purchase history, and using the AI customer-service chat.
-
-All application prices are treated and displayed as **Malaysian Ringgit (MYR / RM)**.
+```text
+http://127.0.0.1:8000
+```
 
 ---
 
-### 4.4 Demonstrate the application using screen recording (Video/GIF Format)
+## Submission note
+
+The web interface extends the minimum console requirement, but the repository deliberately retains the complete Python CLI. This allows the project to demonstrate the course fundamentals directly while also presenting a more usable working application for the final demonstration.
