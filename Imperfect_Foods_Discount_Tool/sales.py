@@ -10,14 +10,12 @@ def buy_food_item(customer_id):
     """Handles item purchase workflow and syncs directly with Supabase."""
     location = customer_location()
 
-    
     inventory_items = get_available_inventory(location)
     
     if not inventory_items:
         print(f"\n[!] No items available to buy for location: '{location}'.")
         return
 
-    # Display items formatted for customer view
     display_inventory_customer(location)
     print("\n--- [ Buy / Sell Food Item ] ---")
 
@@ -54,7 +52,6 @@ def buy_food_item(customer_id):
     new_quantity = selected_item['quantity'] - buy_qty
     new_status = 'SOLD OUT' if new_quantity == 0 else 'AVAILABLE'
 
-    # Update item stock in inventory database
     update_item_stock(selected_item['id'], new_quantity, new_status)
 
     sale_data = {
@@ -75,18 +72,14 @@ def buy_food_item(customer_id):
     print("*"*45)
     print(f"Item Purchased:  {selected_item['name']}")
     print(f"Quantity Bought: {buy_qty} kg/u")
-    print(f"Unit Price:      ${selected_item['new_price']:.2f}")
-    print(f"Total Amount:    ${total_cost:.2f}")
+    print(f"Unit Price:      RM {selected_item['new_price']:.2f}")
+    print(f"Total Amount:    RM {total_cost:.2f}")
     print(f"Remaining Stock: {new_quantity} kg/u ({new_status})")
     print("*"*45)
 
 
 def view_sales_ledger(store_id):
-
-
     """Displays completed sales history and revenue metrics from Supabase."""
-    
-    # Fetch sales history from Supabase
     sales = get_sales_history(store_id)
 
     if not sales:
@@ -96,23 +89,21 @@ def view_sales_ledger(store_id):
     total_revenue = sum(sale['total_amount'] for sale in sales)
     total_quantity_sold = sum(sale['quantity_bought'] for sale in sales)
 
-    print("\n\n" + "="*90)
+    print("\n\n" + "="*96)
     print(f"                     COMPLETED SALES LEDGER ({store_id})")
-    print("="*90)
-    print(f"{'Item Name':<15} | {'Location':<17} | {'Category':<12} | {'Sold Qty':<10} | {'Price/u':<8} | {'Total ($)':<10}")
-    print("="*90)
+    print("="*96)
+    print(f"{'Item Name':<15} | {'Location':<17} | {'Category':<12} | {'Sold Qty':<10} | {'Price/u MYR':<12} | {'Total MYR':<12}")
+    print("="*96)
 
     for sale in sales:
-        # Extract category from join relation (if inventory record still exists)
         category = sale.get('inventory', {}).get('category', 'N/A') if sale.get('inventory') else 'N/A'
-        
         sold_qty_str = f"{sale['quantity_bought']:.1f} kg/u"
-        unit_price_str = f"${sale['unit_price']:.2f}"
-        total_amount_str = f"${sale['total_amount']:.2f}"
+        unit_price_str = f"RM {sale['unit_price']:.2f}"
+        total_amount_str = f"RM {sale['total_amount']:.2f}"
 
-        print(f"{sale['item_name']:<15} | {sale['location']:<17} | {category:<12} | {sold_qty_str:<10} | {unit_price_str:<8} | {total_amount_str:<10}")
+        print(f"{sale['item_name']:<15} | {sale['location']:<17} | {category:<12} | {sold_qty_str:<10} | {unit_price_str:<12} | {total_amount_str:<12}")
 
-    print("="*90)
-    print(f"TOTAL UNITS SOLD:    {total_quantity_sold:.1f} kg/units")
-    print(f"TOTAL REVENUE EARNED: ${total_revenue:.2f}")
-    print("="*90)
+    print("="*96)
+    print(f"TOTAL UNITS SOLD:     {total_quantity_sold:.1f} kg/units")
+    print(f"TOTAL REVENUE EARNED: RM {total_revenue:.2f}")
+    print("="*96)

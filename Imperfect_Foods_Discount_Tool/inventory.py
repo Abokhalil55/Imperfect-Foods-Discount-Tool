@@ -35,7 +35,7 @@ def register_food_item(store_id):
 
     while True:
         try:
-            original_price = float(input("Enter Original Price per kg/unit ($): "))
+            original_price = float(input("Enter Original Price per kg/unit (MYR): "))
             if original_price <= 0:
                 print("Price must be greater than 0.")
                 continue
@@ -86,7 +86,7 @@ def register_food_item(store_id):
         calculate_dynamic_discount(item)
         add_item(item, store_id)
         process_item_and_notifications(item)
-        print(f"\nSUCCESS: '{item_name}' (category: {item['category']}) registered and priced at ${item['new_price']:.2f} ({item['discount_percent']}% OFF)!")
+        print(f"\nSUCCESS: '{item_name}' (category: {item['category']}) registered and priced at RM {item['new_price']:.2f} ({item['discount_percent']}% OFF)!")
     else:
         print(f"\nFAILED: '{item_name}' (category: {item['category']}) failed to register. \nReason: {result['reason']}")
 
@@ -100,20 +100,19 @@ def display_inventory(store_id):
         return
 
     print(f"\n\nstore_id: {store_id}")
-    print("=" * 135)
-    print(f"{'ID':<4} | {'Location':<17} | {'Category':<17} | {'Name':<15} | {'Days Left':<8} | {'Stock':<10} | {'Orig $':<8} | {'Disc %':<8} | {'Sale $':<8} | {'Status':<10}")
-    print("=" * 135)
+    print("=" * 145)
+    print(f"{'ID':<4} | {'Location':<17} | {'Category':<17} | {'Name':<15} | {'Days Left':<8} | {'Stock':<10} | {'Orig MYR':<10} | {'Disc %':<8} | {'Sale MYR':<10} | {'Status':<10}")
+    print("=" * 145)
 
     for item in inventory_items:
         stock_str = f"{item['quantity']:.1f} kg/u"
         disc_str = f"{item['discount_percent']:.1f} %"
-        orig_price_str = f"${item['original_price']:.2f}"
-        sale_price_str = f"${item['new_price']:.2f}"
+        orig_price_str = f"RM {item['original_price']:.2f}"
+        sale_price_str = f"RM {item['new_price']:.2f}"
 
-        # Display the real item['id'] returned from Supabase
-        print(f"{item['id']:<4} | {item['location']:<17} | {item['category']:<17} | {item['name']:<15} | {item['days_left']:<8} | {stock_str:<10} | {orig_price_str:<8} | {disc_str:<8} | {sale_price_str:<8} | {item['status']:<10}")
+        print(f"{item['id']:<4} | {item['location']:<17} | {item['category']:<17} | {item['name']:<15} | {item['days_left']:<8} | {stock_str:<10} | {orig_price_str:<10} | {disc_str:<8} | {sale_price_str:<10} | {item['status']:<10}")
 
-    print("=" * 135)
+    print("=" * 145)
 
 def display_inventory_customer(location):
 
@@ -125,20 +124,19 @@ def display_inventory_customer(location):
         return
 
     print(f"\n\nLocation: {location}")
-    print("=" * 155)
-    print(f"{'ID':<4} | {'Store Name':<20} | {'Category':<25} | {'Name':<15} | {'Days left':<15} | {'Stock':<10} | {'Orig $':<8} | {'Disc %':<8} | {'Sale $':<8} | {'Status':<10}")
-    print("=" * 155)
+    print("=" * 165)
+    print(f"{'ID':<4} | {'Store Name':<20} | {'Category':<25} | {'Name':<15} | {'Days left':<15} | {'Stock':<10} | {'Orig MYR':<10} | {'Disc %':<8} | {'Sale MYR':<10} | {'Status':<10}")
+    print("=" * 165)
 
     for item in inventory_items:
         stock_str = f"{item['quantity']:.1f} kg/u"
         disc_str = f"{item['discount_percent']:.1f} %"
-        orig_price_str = f"${item['original_price']:.2f}"
-        sale_price_str = f"${item['new_price']:.2f}"
+        orig_price_str = f"RM {item['original_price']:.2f}"
+        sale_price_str = f"RM {item['new_price']:.2f}"
 
-        # Display the real item['id'] returned from Supabase
-        print(f"{item['id']:<4} | {item['store_name']:<20} | {item['category']:<25} | {item['name']:<15} | {item['days_left']:<15}  | {stock_str:<10} | {orig_price_str:<8} | {disc_str:<8} | {sale_price_str:<8} | {item['status']:<10}")
+        print(f"{item['id']:<4} | {item['store_name']:<20} | {item['category']:<25} | {item['name']:<15} | {item['days_left']:<15}  | {stock_str:<10} | {orig_price_str:<10} | {disc_str:<8} | {sale_price_str:<10} | {item['status']:<10}")
 
-    print("=" * 155)
+    print("=" * 165)
 
 def display_customer_purchase_history(customer_id):
     """View personal purchase history for a specific customer in a formatted table."""
@@ -149,19 +147,18 @@ def display_customer_purchase_history(customer_id):
         return
 
     print("\n--- [ My Purchase History ] ---")
-    print("=" * 120)
-    print(f"{'ID':<4} | {'Store Name':<20} | {'Item Name':<15} | {'Location':<15} | {'Bought':<10} | {'Unit $':<8} | {'Total $':<8} | {'Date':<19}")
-    print("=" * 120)
+    print("=" * 128)
+    print(f"{'ID':<4} | {'Store Name':<20} | {'Item Name':<15} | {'Location':<15} | {'Bought':<10} | {'Unit MYR':<10} | {'Total MYR':<10} | {'Date':<19}")
+    print("=" * 128)
 
     for record in history_items:
-        store_info = record.get('stores')
+        store_info = record.get('stores') or {}
         store_name = store_info.get('name') or record.get('store_name', 'N/A')
         
         qty_str = f"{record['quantity_bought']:.1f} kg/u"
-        unit_price_str = f"${record['unit_price']:.2f}"
-        total_price_str = f"${record['total_amount']:.2f}"
+        unit_price_str = f"RM {record['unit_price']:.2f}"
+        total_price_str = f"RM {record['total_amount']:.2f}"
 
-        # Format ISO timestamp string (YYYY-MM-DD HH:MM)
         raw_date = str(record.get('created_at', ''))
         date_str = raw_date[:16].replace('T', ' ') if raw_date else 'N/A'
 
@@ -171,10 +168,9 @@ def display_customer_purchase_history(customer_id):
             f"{record['item_name']:<15} | "
             f"{record['location']:<15} | "
             f"{qty_str:<10} | "
-            f"{unit_price_str:<8} | "
-            f"{total_price_str:<8} | "
+            f"{unit_price_str:<10} | "
+            f"{total_price_str:<10} | "
             f"{date_str:<19}"
         )
 
-    print("=" * 120)
-
+    print("=" * 128)

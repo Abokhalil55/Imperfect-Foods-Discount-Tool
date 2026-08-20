@@ -33,7 +33,7 @@ def auth_menu():
     global current_user
     while True:
         print("\n" * 2 + "=" * 60)
-        print("   WELCOME TO IMPERFECT FOODS SYSTEM (SDG 2)")
+        print("   WELCOME TO SECONDSHELF (SDG 2)")
         print("=" * 60)
         print("1. Login")
         print("2. Sign Up")
@@ -65,7 +65,6 @@ def auth_menu():
         elif choice == '2':
             email = input("Enter email: ").strip()
             
-           
             valid, err_msg = is_valid_email(email)
             if not valid:
                 print(f"\n[!] Registration Error: {err_msg}")
@@ -120,7 +119,7 @@ def display_menu():
     name = current_user['full_name']
     
     print("\n" * 2 + "=" * 60)
-    print(f" IMPERFECT FOODS SYSTEM - Logged in as: {name} ({role.upper()})")
+    print(f" SECONDSHELF - Logged in as: {name} ({role.upper()})")
     print("=" * 60)
     
     if role == 'seller':
@@ -139,9 +138,6 @@ def display_menu():
         print("5. Logout")
         print("6. Exit Application")
     
-    # elif role == 'admin-manager-123':
-    #  manager level
-        
     print("=" * 60)
 
 

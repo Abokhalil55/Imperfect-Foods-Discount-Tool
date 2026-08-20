@@ -6,20 +6,20 @@ import json
 def evaluate_added_item(item):
     """Decide either to add the item to the inventory or not"""
 
-    rules = f"""You are an automated review agent evaluating a registered food item entry for a surplus food management system.
+    rules = f"""You are an automated review agent evaluating a registered food item entry for a surplus food management system in Malaysia.
 
 Item Data to Review:
 - Item Name: {item['name']}
 - Category: {item['category']}
 - Quantity (kg/units): {item['quantity']}
-- Original Price ($): {item['original_price']}
+- Original Price (MYR): {item['original_price']}
 - Days Left to Expiry: {item['days_left']}
 - Cosmetic Grade: {item['grade']}
 
 Validation Rules:
 1. Category Match: The item name MUST logically belong to the selected Category (e.g., "Rice + Chicken" belongs in "Prepared Food", NOT "Produce").
 2. Quantity: Must be a positive number greater than 0.
-3. Original Price: Must be a realistic, positive number greater than 0.
+3. Original Price: Must be a realistic, positive number greater than 0 in Malaysian Ringgit (MYR).
 4. Days Left: Must be an integer between 1 and 7.
 5. Grade: Must be either 'A', 'B', or 'C'.
 
@@ -35,7 +35,6 @@ If ANY field violates a rule:
 
 Do not include markdown formatting, code blocks (e.g. ```json), or extra text."""
 
-    
     load_dotenv()
     #ollama = OpenAI(base_url= "http://localhost:11434/v1",api_key=os.getenv("OLLAMA_API_KEY"))
     #ollama_model= 'mistral'
