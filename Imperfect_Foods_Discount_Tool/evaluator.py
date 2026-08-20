@@ -1,11 +1,12 @@
-from openai import OpenAI
-from dotenv import load_dotenv
-import os
 import json
+import os
+
+from dotenv import load_dotenv
+from openai import OpenAI
+
 
 def evaluate_added_item(item):
-    """Decide either to add the item to the inventory or not"""
-
+    """Validate one seller-submitted food item and return an approval decision."""
     rules = f"""You are an automated review agent evaluating a registered food item entry for a surplus food management system in Malaysia.
 
 Item Data to Review:
@@ -33,22 +34,18 @@ If ALL fields are valid:
 If ANY field violates a rule:
 {{"status": "CANCELED", "reason": "One sentence explaining why the item was canceled."}}
 
-Do not include markdown formatting, code blocks (e.g. ```json), or extra text."""
+Do not include markdown formatting, code blocks, or extra text."""
 
     load_dotenv()
-    #ollama = OpenAI(base_url= "http://localhost:11434/v1",api_key=os.getenv("OLLAMA_API_KEY"))
-    #ollama_model= 'mistral'
-    gpt = OpenAI(base_url= "https://api.openai.com/v1",api_key=os.getenv("gpt_API_KEY"))
-    gpt_model= 'gpt-5.4-nano'
-    judge_messages = [{"role": "user", "content": rules}]
+    gpt = OpenAI(base_url="https://api.openai.com/v1", api_key=os.getenv("gpt_API_KEY"))
+    model = "gpt-5.4-nano"
+    messages = [{"role": "user", "content": rules}]
+
     response = gpt.chat.completions.create(
-        model=gpt_model,
-        messages=judge_messages,
+        model=model,
+        messages=messages,
         response_format={"type": "json_object"},
     )
-    answer = response.choices[0].message.content
-    final_result = json.loads(answer)
-    return final_result
 
-if __name__ == "__main__":
-    main()
+    answer = response.choices[0].message.content
+    return json.loads(answer)
