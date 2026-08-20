@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A rescued-food marketplace for imperfect and near-expiry food.">
+  <title>Imperfect Foods Market</title>
+  <link rel="stylesheet" href="/Ui/style.css">
+</head>
+<body>
+  <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+  <main id="auth-screen" class="auth-shell">
+    <section class="auth-story" aria-labelledby="brand-title">
+      <div class="brand brand--light">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>Imperfect Foods</span>
+      </div>
+      <div class="auth-story__copy">
+        <p class="eyebrow">Rescued food market · SDG 2</p>
+        <h1 id="brand-title">Good food deserves a second shelf.</h1>
+        <p>Buy and sell imperfect or near-expiry food at fair, automatically calculated prices.</p>
+      </div>
+      <div class="produce-label" aria-label="How the system works">
+        <span class="produce-label__number">01</span>
+        <div>
+          <strong>Evaluate. Discount. Rescue.</strong>
+          <span>Simple tools for local stores and thoughtful shoppers.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="auth-task">
+      <div class="auth-panel">
+        <div class="auth-tabs" role="tablist" aria-label="Account access">
+          <button class="auth-tab is-active" type="button" role="tab" aria-selected="true" data-auth-tab="login">Login</button>
+          <button class="auth-tab" type="button" role="tab" aria-selected="false" data-auth-tab="signup">Create account</button>
+        </div>
+
+        <form id="login-form" class="auth-form" data-auth-form="login">
+          <header class="form-heading">
+            <p class="eyebrow">Welcome back</p>
+            <h2>Sign in to your market.</h2>
+          </header>
+          <label>Email
+            <input name="email" type="email" autocomplete="email" required>
+          </label>
+          <label>Password
+            <input name="password" type="password" autocomplete="current-password" minlength="6" required>
+          </label>
+          <p class="form-status" data-form-status aria-live="polite"></p>
+          <button class="button button--primary button--wide" type="submit">Login</button>
+        </form>
+
+        <form id="signup-form" class="auth-form is-hidden" data-auth-form="signup">
+          <header class="form-heading">
+            <p class="eyebrow">Join the rescue</p>
+            <h2>Create your account.</h2>
+          </header>
+          <div class="form-grid">
+            <label>Full name
+              <input name="full_name" autocomplete="name" required>
+            </label>
+            <label>Email
+              <input name="email" type="email" autocomplete="email" required>
+            </label>
+          </div>
+          <label>Password
+            <input name="password" type="password" autocomplete="new-password" minlength="6" required>
+          </label>
+          <fieldset class="role-choice">
+            <legend>I am joining as</legend>
+            <label><input type="radio" name="role" value="customer" checked> Customer</label>
+            <label><input type="radio" name="role" value="seller"> Seller</label>
+          </fieldset>
+          <div id="seller-fields" class="seller-fields is-hidden">
+            <label>Store name
+              <input name="store_name">
+            </label>
+            <label>Store location
+              <select name="store_location">
+                <option value="">Choose location</option>
+                <option>Cyberjaya</option>
+                <option>Petaling Jaya</option>
+                <option>Putrajaya</option>
+                <option>Puchong</option>
+              </select>
+            </label>
+          </div>
+          <p class="form-status" data-form-status aria-live="polite"></p>
+          <button class="button button--primary button--wide" type="submit">Create account</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <div id="app-shell" class="app-shell is-hidden">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>Imperfect Foods</span>
+      </div>
+      <nav id="app-nav" class="app-nav" aria-label="Main navigation"></nav>
+      <div class="account-stub">
+        <span id="account-name"></span>
+        <small id="account-role"></small>
+      </div>
+    </aside>
+    <main class="app-main">
+      <header class="app-header">
+        <div>
+          <p id="view-kicker" class="eyebrow"></p>
+          <h1 id="view-title">Overview</h1>
+        </div>
+        <div id="header-actions" class="header-actions"></div>
+      </header>
+      <section id="view-content" class="view-content" aria-live="polite"></section>
+    </main>
+  </div>
+
+  <div id="modal" class="modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal__backdrop" data-close-modal></div>
+    <section class="modal__panel">
+      <header class="modal__header">
+        <div>
+          <p class="eyebrow">Imperfect Foods</p>
+          <h2 id="modal-title"></h2>
+        </div>
+        <button class="icon-button" type="button" data-close-modal aria-label="Close dialog">×</button>
+      </header>
+      <div id="modal-body"></div>
+    </section>
+  </div>
+
+  <script src="/Ui/app.js"></script>
+</body>
+</html>
