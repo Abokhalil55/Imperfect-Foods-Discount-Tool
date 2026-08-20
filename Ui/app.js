@@ -541,7 +541,7 @@ async function renderPurchases() {
 
 async function renderSupport() {
   setViewHeader("Customer help", "Support");
-  const welcome = state.chatHistory.length ? "" : `<div class="chat-message">Ask SecondShelf about discounts, food storage, notifications, complaints, or how the rescued-food market works.</div>`;
+  const welcome = state.chatHistory.length ? "" : `<div class="chat-message">Ask JimatRasa about discounts, food storage, notifications, complaints, or how the rescued-food market works.</div>`;
 
   viewContent.innerHTML = `<div class="chat-shell">
     <div id="chat-log" class="chat-log">${welcome}${state.chatHistory.map(message => `<div class="chat-message chat-message--${message.role === "user" ? "user" : "assistant"}">${escapeHtml(message.content)}</div>`).join("")}</div>
@@ -788,7 +788,7 @@ document.addEventListener("submit", async event => {
     input.value = "";
 
     const log = document.querySelector("#chat-log");
-    log.insertAdjacentHTML("beforeend", `<div class="chat-message chat-message--user">${escapeHtml(message)}</div><div id="chat-loading" class="chat-message chat-message--loading">SecondShelf support is thinking...</div>`);
+    log.insertAdjacentHTML("beforeend", `<div class="chat-message chat-message--user">${escapeHtml(message)}</div><div id="chat-loading" class="chat-message chat-message--loading">JimatRasa support is thinking...</div>`);
     log.scrollTop = log.scrollHeight;
     setButtonLoading(button, true, "Sending...");
 

@@ -1,12 +1,12 @@
-# SecondShelf — Discount & Sales Management System
+# JimatRasa — Discount & Sales Management System
 
-SecondShelf is a surplus-food management application written in Python with an additional lightweight web interface. Integrated with OpenAI GPT models and Supabase, it allows food sellers to register imperfect and near-expiry inventory across multiple Malaysian locations, automatically evaluate items against quality rules, compute dynamic discounts, process sales in **Malaysian Ringgit (MYR)**, track seller KPIs, and measure sustainability impact aligned with **UN SDG 2 (Zero Hunger)**.
+JimatRasa is a surplus-food management application written in Python with an additional lightweight web interface. Integrated with OpenAI GPT models and Supabase, it allows food sellers to register imperfect and near-expiry inventory across multiple Malaysian locations, automatically evaluate items against quality rules, compute dynamic discounts, process sales in **Malaysian Ringgit (MYR)**, track seller KPIs, and measure sustainability impact aligned with **UN SDG 2 (Zero Hunger)**.
 
 ---
 
 ### 4.1 Purpose of the application
 
-**SecondShelf** was developed to minimize food waste, streamline seller registration, and automate quality control in surplus food distribution.
+**JimatRasa** was developed to minimize food waste, streamline seller registration, and automate quality control in surplus food distribution.
 
 * **Automated Quality Control:** Leverages an AI Review Agent (`evaluator.py`) to validate registered items against rules for category matching, quantity, realistic MYR pricing, expiry window, and cosmetic grading before adding them to inventory.
 * **Dynamic Pricing Engine:** Automatically computes tiered discounts in `pricing.py` based on an item's remaining shelf life and cosmetic grade to encourage rapid sales of nearing-expiry food.

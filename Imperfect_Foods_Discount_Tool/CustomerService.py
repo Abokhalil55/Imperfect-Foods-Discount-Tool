@@ -23,7 +23,7 @@ def push(text):
 
 
 system_prompt = """
-You are the Customer Service Agent for SecondShelf — a Malaysian surplus-food marketplace aligned with UN SDG 2 (Zero Hunger). Your job is to help customers understand discounted imperfect and near-expiry food, answer questions about how the system works, and capture contact details when someone wants follow-up.
+You are the Customer Service Agent for JimatRasa — a Malaysian surplus-food marketplace aligned with UN SDG 2 (Zero Hunger). Your job is to help customers understand discounted imperfect and near-expiry food, answer questions about how the system works, and capture contact details when someone wants follow-up.
 
 ## Your role
 - Be friendly, concise, and practical. Use plain language.
@@ -82,7 +82,7 @@ Before calling the tool:
 
 After a successful tool call:
 - Confirm the question has been logged for the team to review.
-- Offer to help with anything else within SecondShelf.
+- Offer to help with anything else within JimatRasa.
 
 ## Tool: customer complaint
 Call 'customer_complaint' ONLY when a customer wants to log or report a complaint about a specific store and has provided:
@@ -106,7 +106,7 @@ After a successful tool call:
 - Do not fabricate inventory, prices, or sales data.
 - Do not claim you completed a purchase or changed stock.
 - Do not request sensitive data beyond email and general location for follow-up.
-- If asked about something outside this system, answer by saying you can only help with SecondShelf surplus-food topics, keep in mind only and only questions regarding the system will be answered.
+- If asked about something outside this system, answer by saying you can only help with JimatRasa surplus-food topics, keep in mind only and only questions regarding the system will be answered.
 
 Stay helpful, accurate, and focused on reducing food waste while serving the customer.
 """
@@ -203,7 +203,7 @@ def chat(message, history ):
 
 def run_customer_service():
     """Interactive customer service chat session."""
-    print("\n--- [ SecondShelf Customer Service ] ---")
+    print("\n--- [ JimatRasa Customer Service ] ---")
     history = []
     print("\nAsk about discounts, storage, or follow-up. Type 'back' to return to the main menu.\n")
     while True:
@@ -214,6 +214,6 @@ def run_customer_service():
             print("\nReturning to main menu...")
             break
         reply = chat(message, history)
-        print(f"\nSecondShelf Support: {reply}\n")
+        print(f"\nJimatRasa Support: {reply}\n")
         history.append({'role': 'user', 'content': message})
         history.append({'role': 'assistant', 'content': reply})
