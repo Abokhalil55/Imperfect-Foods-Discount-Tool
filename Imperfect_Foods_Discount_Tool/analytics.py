@@ -9,7 +9,13 @@ def generate_waste_report(store_id):
 
     if not inventory_items and not sales_records:
         print(f"\n[!] No inventory or sales data available for id: '{store_id}'.")
-        return
+        return {
+            "food_saved": 0.0,
+            "revenue_recovered": 0.0,
+            "co2_avoided": 0.0,
+            "transactions": 0,
+            "impact_index": "NEEDS IMPROVEMENT ⚠️"
+        }
 
     # 2. Compute metrics using Supabase column names
     total_saved_kg = sum(sale['quantity_bought'] for sale in sales_records) if sales_records else 0.0
@@ -37,3 +43,11 @@ def generate_waste_report(store_id):
     print(f"Total Transactions Completed:    {total_transactions}")
     print(f"SDG 2 Impact Index:              {impact_index}")
     print("*"*58)
+
+    return {
+        "food_saved": total_saved_kg,
+        "revenue_recovered": total_revenue,
+        "co2_avoided": co2_mitigated,
+        "transactions": total_transactions,
+        "impact_index": impact_index
+    }
