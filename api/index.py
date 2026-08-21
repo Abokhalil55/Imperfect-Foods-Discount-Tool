@@ -1,3 +1,5 @@
+"""HTTP API that connects the JimatRasa web UI to the Python application."""
+
 import json
 import math
 import os
@@ -8,16 +10,18 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 
+# Make the existing Python application modules importable from the web entry
+# point. Environment secrets remain server-side and are never exposed to JS.
 ROOT = Path(__file__).resolve().parents[1]
 PYTHON_APP = ROOT / "Imperfect_Foods_Discount_Tool"
 load_dotenv(PYTHON_APP / ".env", override=True)
 sys.path.insert(0, str(PYTHON_APP))
 
 from CustomerService import chat
+from Update_del import delete_item_seller, mark_item_sold_out
 from analytics import generate_waste_report
 from database import (
     add_item,
-    delete_store_item,
     get_available_inventory,
     get_customer_purchase_history,
     get_inventory,
@@ -41,10 +45,12 @@ CATEGORIES = [
 
 
 def public_user(user):
+    """Return only the user fields required by the browser interface."""
     return {key: user.get(key) for key in ["id", "full_name", "email", "role", "store_id"]}
 
 
 def number(value, field):
+    """Convert an API value to a finite float or raise a readable error."""
     try:
         result = float(value)
     except (TypeError, ValueError):
@@ -55,6 +61,7 @@ def number(value, field):
 
 
 def normalize_market_item(item):
+    """Flatten the nested Supabase store relationship for the web UI."""
     store = item.get("stores") or {}
     if isinstance(store, list):
         store = store[0] if store else {}
@@ -65,6 +72,7 @@ def normalize_market_item(item):
 
 
 def run_action(data):
+    """Execute one browser-requested action using the existing Python modules."""
     action = data.get("action")
 
     if action == "login":
@@ -80,6 +88,7 @@ def run_action(data):
             return {"success": False, "error": "Role must be customer or seller."}, 400
         if role == "seller" and location not in LOCATIONS:
             return {"success": False, "error": "Choose a supported store location."}, 400
+
         result = sign_up_user(
             data.get("email", "").strip(),
             data.get("password", ""),
@@ -93,6 +102,8 @@ def run_action(data):
         return {"success": True, "message": result["message"], "user": public_user(result["data"])}, 200
 
     elif action == "seller_inventory":
+        # get_inventory() also synchronizes each item's 24-hour expiry values
+        # before returning the rows to the seller dashboard.
         return {"success": True, "items": get_inventory(data.get("store_id"))}, 200
 
     elif action == "add_item":
@@ -101,11 +112,15 @@ def run_action(data):
         days_left = number(data.get("days_left"), "Days left")
         if not days_left.is_integer():
             return {"success": False, "error": "Days left must be a whole number."}, 400
+
         category = data.get("category")
         grade = data.get("grade")
         location = data.get("location")
         if category not in CATEGORIES or grade not in ["A", "B", "C"] or location not in LOCATIONS:
             return {"success": False, "error": "Choose a valid category, grade, and location."}, 400
+
+        # Keep the item structure identical to the CLI inventory workflow so
+        # both interfaces feed the same evaluator, pricing and database logic.
         item = {
             "store_id": data.get("store_id"),
             "location": location,
@@ -121,6 +136,7 @@ def run_action(data):
             "new_price": 0.0,
             "status": "AVAILABLE",
         }
+
         evaluation = evaluate_added_item(item)
         if evaluation.get("status") != "APPROVED":
             return {
@@ -130,6 +146,7 @@ def run_action(data):
                 "discount": 0,
                 "new_price": 0,
             }, 200
+
         calculate_dynamic_discount(item)
         created = add_item(item, data.get("store_id"))
         process_item_and_notifications(item)
@@ -142,16 +159,23 @@ def run_action(data):
         }, 200
 
     elif action == "mark_sold_out":
-        updated = update_item_stock(data.get("item_id"), 0, "SOLD OUT")
-        if not updated:
-            return {"success": False, "error": "Item was not found or could not be updated."}, 404
-        return {"success": True, "item": updated[0]}, 200
+        # Route the WEB Sold Out button through Update_del.py. The CLI uses the
+        # same helper, so seller inventory maintenance now has one shared path.
+        result = mark_item_sold_out(
+            data.get("item_id"),
+            store_id=data.get("store_id"),
+        )
+        if not result.get("success"):
+            return {"success": False, "error": result.get("error", "Item could not be updated.")}, 404
+        return {"success": True, "item": result.get("item"), "message": result.get("message")}, 200
 
     elif action == "delete_item":
-        deleted = delete_store_item(data.get("store_id"), data.get("item_id"))
-        if not deleted:
-            return {"success": False, "error": "Item was not found or could not be deleted."}, 404
-        return {"success": True}, 200
+        # Route the WEB Delete button through Update_del.py as well. That helper
+        # verifies seller ownership and confirms the row disappeared in Supabase.
+        result = delete_item_seller(data.get("store_id"), data.get("item_id"))
+        if not result.get("success"):
+            return {"success": False, "error": result.get("error", "Item could not be deleted.")}, 404
+        return {"success": True, "message": result.get("message")}, 200
 
     elif action == "market":
         location = data.get("location")
@@ -164,17 +188,31 @@ def run_action(data):
         quantity = number(data.get("quantity"), "Quantity")
         if quantity <= 0:
             return {"success": False, "error": "Quantity must be greater than zero.", "code": "invalid_quantity"}, 400
+
         location = data.get("location")
         items = get_available_inventory(location)
-        selected = next((item for item in items if str(item.get("id")) == str(data.get("item_id"))), None)
+        selected = next(
+            (item for item in items if str(item.get("id")) == str(data.get("item_id"))),
+            None,
+        )
         if not selected:
             return {"success": False, "error": "This item is no longer available."}, 404
+
         available = float(selected.get("quantity", 0))
         if quantity > available:
-            return {"success": False, "error": f"Only {available:g} kg/units are available.", "code": "insufficient_stock"}, 400
+            return {
+                "success": False,
+                "error": f"Only {available:g} kg/units are available.",
+                "code": "insufficient_stock",
+            }, 400
+
         remaining = available - quantity
         status = "SOLD OUT" if remaining == 0 else "AVAILABLE"
         total = round(quantity * float(selected["new_price"]), 2)
+
+        # Purchases use the lower-level stock helper because they reduce stock
+        # by a variable amount rather than explicitly choosing the Sold Out
+        # maintenance action.
         update_item_stock(selected["id"], remaining, status)
         sale = {
             "store_id": selected["store_id"],
@@ -237,7 +275,10 @@ def run_action(data):
 
 
 class handler(BaseHTTPRequestHandler):
+    """Minimal HTTP handler used by Vercel and local development."""
+
     def send_json(self, payload, status=200):
+        """Send one JSON response with a consistent UTF-8 content type."""
         body = json.dumps(payload, default=str).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -246,6 +287,7 @@ class handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
+        """Serve the static web UI when the Python server is run directly."""
         static_files = {
             "/": ("Ui/index.html", "text/html; charset=utf-8"),
             "/Ui/index.html": ("Ui/index.html", "text/html; charset=utf-8"),
@@ -264,6 +306,7 @@ class handler(BaseHTTPRequestHandler):
         self.send_json({"success": True, "message": "JimatRasa API is ready."})
 
     def do_POST(self):
+        """Parse one JSON action request and return its Python result."""
         try:
             length = int(self.headers.get("Content-Length", 0))
             data = json.loads(self.rfile.read(length) or b"{}")
