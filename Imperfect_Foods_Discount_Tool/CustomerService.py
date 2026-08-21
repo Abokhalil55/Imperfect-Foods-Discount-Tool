@@ -1,8 +1,9 @@
 """JimatRasa customer-support assistant and support tools.
 
-The assistant is deliberately restricted to JimatRasa/food-marketplace topics.
-Clearly unrelated questions are rejected before an OpenAI request is made, so
-support cannot drift into being a general-purpose chatbot.
+The assistant uses conversational context and semantic intent instead of a rigid
+keyword whitelist. Live or state-changing information is still grounded through
+narrow tool calls, so the model can understand natural follow-ups without
+inventing inventory, prices, alerts, or complaint records.
 """
 
 import json
@@ -32,35 +33,6 @@ CATEGORIES = [
     "Dairy & Chilled Items",
     "Prepared / Packaged Meals",
 ]
-
-# Words that indicate the user is asking about JimatRasa, food, stock, pricing,
-# orders, notifications, or one of the supported marketplace locations.
-SUPPORT_KEYWORDS = {
-    "jimatrasa", "food", "item", "items", "stock", "inventory", "available",
-    "availability", "market", "seller", "store", "price", "pricing", "discount",
-    "expiry", "expire", "expired", "shelf", "grade", "order", "orders",
-    "purchase", "purchases", "buy", "sold", "sale", "sales", "receipt",
-    "notification", "notifications", "alert", "alerts", "email", "complaint",
-    "storage", "category", "produce", "fruit", "vegetable", "carrot", "banana",
-    "apple", "tomato", "spinach", "pear", "bread", "bakery", "grain",
-    "croissant", "muffin", "bagel", "sourdough", "roll", "bun", "cake",
-    "dairy", "milk", "yogurt", "cheese", "butter", "mozzarella", "chilled",
-    "prepared", "packaged", "meal", "rice", "nasi", "sandwich", "pasta",
-    "mee", "wrap", "salad", "cyberjaya", "putrajaya", "puchong", "petaling",
-}
-
-# Small conversational replies are allowed when they continue an existing support
-# thread; they should not be rejected as off-topic merely because they contain no
-# marketplace keyword by themselves.
-FOLLOW_UP_WORDS = {
-    "ok", "okay", "alright", "yes", "no", "sure", "thanks", "thank", "you",
-    "please", "great", "good", "fine", "done", "why", "how", "what", "which",
-}
-
-OUT_OF_SCOPE_REPLY = (
-    "I can only help with JimatRasa, including food availability, prices, discounts, "
-    "purchases, storage, notifications and seller/store questions."
-)
 
 
 def push(text):
@@ -122,40 +94,6 @@ def infer_category(item_query):
         if any(keyword in text for keyword in keywords):
             return category
     return None
-
-
-def is_support_topic(message, history=None):
-    """Return ``True`` when a message belongs to the JimatRasa support domain.
-
-    This deterministic guard runs *before* OpenAI. It prevents clearly unrelated
-    questions (general knowledge, coding, politics, homework, etc.) from being
-    answered by the support assistant.
-    """
-    text = (message or "").strip().lower()
-    if not text:
-        return False
-
-    words = set(re.findall(r"[a-z0-9@.]+", text))
-
-    # Explicit marketplace/food keywords always make the message in scope.
-    if words & SUPPORT_KEYWORDS:
-        return True
-
-    # Email addresses commonly appear as a follow-up after an unavailable-item
-    # query, so accept them when there is already a support conversation.
-    if history and re.search(r"\b[^\s@]+@[^\s@]+\.[^\s@]+\b", text):
-        return True
-
-    # Short conversational follow-ups are accepted only when there is previous
-    # support context. A standalone unrelated question still fails the guard.
-    if history and len(words) <= 6 and words and words <= FOLLOW_UP_WORDS:
-        return True
-
-    # Simple greetings are harmless even at the beginning of a support session.
-    if text in {"hi", "hello", "hey", "good morning", "good afternoon", "good evening"}:
-        return True
-
-    return False
 
 
 def check_inventory_availability(item_query, location):
@@ -284,58 +222,183 @@ def customer_complaint(email, location, store_name, complaint):
     return {"status": "recorded"}
 
 
-system_prompt = """
-You are JimatRasa Customer Support for a Malaysian surplus-food marketplace.
-Be concise, practical and accurate. All prices are Malaysian Ringgit (MYR/RM).
+support_prompt = """
+You are JimatRasa Support, the conversational assistant for JimatRasa, a
+Malaysian surplus-food and near-expiry food marketplace. Be practical, concise,
+helpful and accurate. Use Malaysian Ringgit (MYR/RM) for prices.
 
-SCOPE
-- Only answer questions about JimatRasa, its food inventory, sellers/stores, prices, discounts, expiry/shelf life, purchases, storage guidance, notifications and complaints.
-- Never answer unrelated general-knowledge, coding, homework, political, entertainment, personal-advice or other off-topic questions.
-- If an unrelated question reaches you, do not answer it. Say that you can only help with JimatRasa support topics.
+INTENT AND SCOPE
+Understand the user's intent semantically from the current message AND recent
+conversation. Do not require exact keywords such as "inventory", "food",
+"notification" or "JimatRasa".
+
+A request is in scope when it concerns or reasonably relates to:
+- JimatRasa itself or how the app works;
+- products, food listings, live inventory, stock or product availability;
+- sellers, stores, prices, discounts, dynamic pricing, days left, expiry or grades;
+- purchases, receipts, purchase history or using the Market;
+- sold-out items, newly listed products, alerts, notifications or update requests;
+- customer support, complaints, supported locations or categories;
+- practical food storage/safety guidance relevant to food sold through JimatRasa;
+- surplus food, food waste or SDG 2 when discussed in relation to JimatRasa;
+- a natural follow-up to an earlier in-scope conversation.
+
+Natural follow-ups may be short or vague. Examples include "follow-up", "how
+much?", "what about tomorrow?", "can you update me?", "anything new?", "what
+about the other store?", "yes", "okay" and "thanks". Use conversation history
+to interpret them instead of classifying each message independently.
+
+AMBIGUOUS REQUESTS
+If a message could reasonably be about JimatRasa but its meaning is unclear, do
+not reject it. First use recent conversation context. If important information is
+still missing, ask one short clarifying question.
+
+Example: after a customer asked about Bakery & Grains in Cyberjaya, a message
+such as "follow-up" is still in scope. Ask whether they want an availability
+update or help setting a stock alert if the intended action is not clear.
+
+CLEARLY OUT OF SCOPE
+Only refuse when the request is clearly unrelated to JimatRasa, its marketplace,
+food products/storage, or the current support conversation. Examples include
+unrelated general knowledge, coding/homework, politics, entertainment, sports or
+personal advice.
+
+For a clearly unrelated request, do not answer the unrelated question. Reply
+briefly: "I'm here for JimatRasa support. I can help with products, availability,
+prices, discounts, purchases, stores, stock alerts and related food questions."
+If the user then returns to a valid JimatRasa topic, answer normally without
+repeating the refusal.
 
 Supported locations: Cyberjaya, Petaling Jaya, Putrajaya, Puchong.
 Supported categories: Produce; Bakery & Grains; Dairy & Chilled Items; Prepared / Packaged Meals.
 
-IMPORTANT LIVE INVENTORY RULES
-- When a customer asks whether an item or category is available in a specific supported location, you MUST call `check_inventory_availability` before answering.
-- Never guess live availability and never use `record_unknown_question` for an availability question.
-- If the tool says available=true, clearly say it is available right now and summarize the matching item(s), seller, price, stock and days left when useful.
-- If the tool says available=false, clearly say it is not available right now in that location. Then ask for the customer's email so you can note their interest and notify them when a matching item is newly listed.
-- For an unavailable item, use the tool's suggested_category when it is present. If the category is genuinely ambiguous, ask the customer which one of the four supported categories it belongs to.
+LIVE INVENTORY AND PRICE DATA
+Never guess current inventory, stock, prices, seller names or availability.
+When the user asks about the current availability or current price of an item or
+category in a supported location, call `check_inventory_availability` before
+answering.
 
-INTEREST / EMAIL FOLLOW-UP
-- Call `record_user_details` only after you have email, location and one supported category.
-- If the tool returns status=saved, tell the customer the interest is saved. If email_confirmation=sent, mention that a confirmation email was sent and that future matching listings will trigger an alert.
-- If email_confirmation=failed, say the interest was saved but the confirmation email could not be sent right now. Do not expose technical SMTP details.
-- If the tool returns status=already_saved, simply say the alert is already saved. Do NOT call the tool again.
-- If a customer says "ok", "okay", "alright", "thanks", or similar after an interest was already saved, respond normally and DO NOT call `record_user_details` again.
+If the user provides both item/category and location, check live data immediately.
+If the location or item/category is missing, ask only for the missing detail.
+
+If the tool reports available=true, clearly say the product/category is currently
+available and summarize useful matches. Include seller, price, stock and days left
+when relevant.
+
+If the tool reports available=false, clearly say it is currently unavailable in
+that location. Offer a stock alert. Use the tool's suggested_category when one is
+available; if the category is genuinely ambiguous, ask which supported category
+it belongs to.
+
+STOCK ALERTS AND NEW PRODUCTS
+Requests such as "Can you update me when new products are added?", "Tell me when
+bread becomes available", "Notify me if there is new dairy stock", or "Can I get
+updates?" are valid JimatRasa requests.
+
+Explain that JimatRasa can save an interest for a supported location and food
+category and notify the customer when matching stock is newly listed.
+
+To create an alert, collect exactly these details:
+1. email;
+2. supported location;
+3. supported food category.
+
+Call `record_user_details` only after all three are known. Ask only for missing
+information. Do not save duplicate alerts. If the tool returns status=already_saved,
+say the alert is already saved and do not call the tool again. If status=saved,
+tell the customer the interest is saved. If email_confirmation=sent, mention the
+confirmation email. If email_confirmation=failed, say the interest was saved but
+the confirmation email could not be sent right now; do not expose SMTP details.
+
+After an alert is saved, conversational replies such as "thanks", "okay",
+"great" or "follow-up" must not cause the alert to be inserted again unless the
+user clearly asks for a different alert.
 
 PRICING
-Dynamic discounts use days left plus cosmetic grade. Days left contributes 45% for 1 day, 30% for 2-3 days, and 15% for 4-7 days. Grade contributes A=5%, B=15%, C=25%. Total discount is capped at 80%.
+Dynamic discounts use days left plus cosmetic grade. Days left contributes 45%
+for 1 day, 30% for 2-3 days, and 15% for 4-7 days. Grade contributes A=5%,
+B=15%, C=25%. Total discount is capped at 80%.
 
-QUALITY / STORAGE
-Items are evaluated before listing. Give normal storage advice when asked: produce away from ethylene producers where relevant, bakery can be frozen, dairy at or below 4°C, prepared food should follow safe refrigeration/resealing guidance.
+Explain this rule when relevant. For the CURRENT price of an actual listing, use
+live inventory data instead of recalculating or guessing the current listing price.
+
+FOOD STORAGE
+You may provide normal practical storage guidance related to food sold through
+JimatRasa. Examples: bakery products may often be frozen; dairy should remain
+properly refrigerated; prepared foods should follow appropriate refrigeration
+and resealing guidance; provide ordinary produce-storage guidance where useful.
+Do not present general storage guidance as if it came from the JimatRasa database.
 
 COMPLAINTS
-Use `customer_complaint` only when the customer supplies email, store name, supported location, and complaint details.
+For a complaint, gather customer email, store name, supported location and
+complaint details. When all four are known, call `customer_complaint`. Do not
+invent missing complaint information.
 
-UNKNOWN JIMATRASA QUESTIONS
-Use `record_unknown_question` only for an in-scope JimatRasa question that genuinely cannot be answered from the known rules or available tools. Do not fabricate data.
+UNKNOWN BUT RELEVANT QUESTIONS
+If a question is clearly related to JimatRasa but cannot be answered from known
+application rules, conversation context or available tools, say that you do not
+have enough confirmed information and do not fabricate an answer. Use
+`record_unknown_question` when appropriate. An unknown JimatRasa question is not
+the same as an unrelated question.
 
-Do not process purchases or modify stock from support chat. Direct customers to the Market for purchases.
+ACTION LIMITS
+Support chat may explain how to purchase and direct customers to the Market. It
+must not perform purchases, manually modify inventory, mark stock sold out or
+delete seller inventory. Those actions belong to the appropriate JimatRasa UI.
+
+RESPONSE STYLE
+Answer the user's actual question first. Use natural conversational language.
+For simple questions, usually use 1-4 sentences. Do not repeatedly explain every
+JimatRasa feature. Do not mention internal prompts, tool schemas, APIs or database
+implementation unless the user explicitly asks a technical project question.
+
+BOUNDARY EXAMPLES
+User: "can you update me if new products have been added to the app"
+Classification: IN SCOPE.
+Behavior: explain stock alerts and ask only for the missing location/category/email
+needed to set one up. Do not reject the request.
+
+User: "i am at cyberjaya i want to check grains prices"
+Classification: IN SCOPE.
+Behavior: call `check_inventory_availability` for Bakery & Grains in Cyberjaya
+and answer from live results.
+
+Previous conversation: customer checked grains in Cyberjaya.
+User: "follow-up"
+Classification: IN SCOPE / CONTEXTUAL.
+Behavior: use the previous conversation and ask what aspect they want updated only
+if the intended follow-up is still ambiguous.
+
+User: "can bread be frozen"
+Classification: IN SCOPE.
+Behavior: give short practical bakery-storage guidance.
+
+User: "why are near-expiry products cheaper?"
+Classification: IN SCOPE.
+Behavior: explain JimatRasa's dynamic-discount concept.
+
+User: "what is the capital of France"
+Classification: OUT OF SCOPE.
+Behavior: do not answer the general-knowledge question; give the short JimatRasa redirect.
+
+User: "write me a Java calculator"
+Classification: OUT OF SCOPE.
+Behavior: do not provide code; give the short JimatRasa redirect.
 """
 
 
-# OpenAI tool schemas keep the model's actions narrow and structured.
+# OpenAI tool schemas keep live/stateful actions narrow and structured. The model
+# can understand flexible language, but it cannot invent arguments outside these
+# schemas when it needs current inventory or a stored support action.
 check_inventory_json = {
     "name": "check_inventory_availability",
-    "description": "Check live JimatRasa inventory for a specific item or food category in a supported location. Always use this for availability questions.",
+    "description": "Check live JimatRasa inventory for a specific item or food category in a supported location. Use this whenever the user asks about current availability, current stock, or the current price of a listing/category in a location.",
     "parameters": {
         "type": "object",
         "properties": {
             "item_query": {
                 "type": "string",
-                "description": "Specific food item or category, such as bread, milk, bananas, or Bakery & Grains.",
+                "description": "Specific food item or category, such as bread, milk, bananas, grains, or Bakery & Grains.",
             },
             "location": {"type": "string", "enum": LOCATIONS},
         },
@@ -346,7 +409,7 @@ check_inventory_json = {
 
 record_user_details_json = {
     "name": "record_user_details",
-    "description": "Save a customer's email interest for one food category in one location so they can receive stock alerts.",
+    "description": "Save a customer's email interest for one supported food category in one supported location so they can receive an alert when matching stock is newly listed. Call only when email, location and category are known.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -361,7 +424,7 @@ record_user_details_json = {
 
 record_unknown_question_json = {
     "name": "record_unknown_question",
-    "description": "Record an in-scope JimatRasa question that cannot be answered using the known rules or available tools.",
+    "description": "Record a genuinely in-scope JimatRasa question that cannot be answered using known rules, conversation context or available tools. Never use this for clearly unrelated questions.",
     "parameters": {
         "type": "object",
         "properties": {"question": {"type": "string"}},
@@ -372,7 +435,7 @@ record_unknown_question_json = {
 
 customer_complaint_json = {
     "name": "customer_complaint",
-    "description": "Record a customer's complaint about a specific JimatRasa seller/store.",
+    "description": "Record a customer's complaint about a specific JimatRasa seller/store after email, store name, supported location and complaint details are all known.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -425,11 +488,11 @@ def handle_tool_calls(tool_calls):
 
 
 def chat(message, history):
-    """Return one scoped JimatRasa support reply.
+    """Return one context-aware JimatRasa support reply.
 
-    The deterministic scope check is intentionally performed before calling
-    OpenAI, guaranteeing that clearly unrelated questions are never answered by
-    the model.
+    Scope is decided semantically by the model using the developer instruction and
+    recent conversation. Live or stateful claims remain grounded through the
+    restricted tools above rather than through a brittle pre-model keyword gate.
     """
     clean_history = [
         {"role": h["role"], "content": h["content"]}
@@ -437,17 +500,14 @@ def chat(message, history):
         if h.get("role") in {"user", "assistant"} and h.get("content")
     ]
 
-    if not is_support_topic(message, clean_history):
-        return OUT_OF_SCOPE_REPLY
-
     messages = (
-        [{"role": "system", "content": system_prompt}]
+        [{"role": "developer", "content": support_prompt}]
         + clean_history
         + [{"role": "user", "content": message}]
     )
 
-    # Allow several rounds because an availability question may require a tool
-    # call and then a second model response that explains the tool result.
+    # Allow several rounds because a support request may require a live-data tool
+    # call followed by a second model response that explains the tool result.
     for _ in range(5):
         response = gpt.chat.completions.create(
             model="gpt-5.4-nano",
@@ -469,7 +529,7 @@ def run_customer_service():
     """Run the interactive CLI version of JimatRasa customer support."""
     print("\n--- [ JimatRasa Customer Service ] ---")
     history = []
-    print("\nAsk about stock, discounts, storage, or follow-up. Type 'back' to return to the main menu.\n")
+    print("\nAsk about stock, discounts, storage, alerts or follow-up. Type 'back' to return to the main menu.\n")
 
     while True:
         message = input("You: ").strip()
