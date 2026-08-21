@@ -142,5 +142,28 @@
   </div>
 
   <script src="/Ui/app.js"></script>
+  <script>
+    const headlineRevenueFormatter = new Intl.NumberFormat("en-MY", {
+      style: "currency",
+      currency: "MYR",
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    });
+
+    function formatHeadlineRevenue() {
+      document.querySelectorAll(".revenue-register > strong").forEach(element => {
+        const value = Number(element.textContent.replace(/[^0-9.-]/g, ""));
+        if (!Number.isFinite(value)) return;
+        const formatted = headlineRevenueFormatter.format(value);
+        if (element.textContent !== formatted) element.textContent = formatted;
+        element.style.whiteSpace = "nowrap";
+        element.style.overflowWrap = "normal";
+      });
+    }
+
+    const revenueObserver = new MutationObserver(formatHeadlineRevenue);
+    revenueObserver.observe(document.querySelector("#view-content"), { childList: true, subtree: true });
+    formatHeadlineRevenue();
+  </script>
 </body>
 </html>

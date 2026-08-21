@@ -325,50 +325,49 @@ function categoryBars(categories) {
   }).join("")}</div>`;
 }
 
-function sellerKpis(sales, inventory, impact) {
+function sellerKpis(sales, inventory) {
   const totalRevenue = sales.reduce((sum, sale) => sum + Number(sale.total_amount || 0), 0);
   const transactions = sales.length;
   const averageOrder = transactions ? totalRevenue / transactions : 0;
   const totalQuantity = sales.reduce((sum, sale) => sum + Number(sale.quantity_bought || 0), 0);
   const available = inventory.filter(item => String(item.status).toUpperCase() === "AVAILABLE").length;
   const topSale = Math.max(...sales.map(sale => Number(sale.total_amount || 0)), 0);
+  const stockOnHand = inventory.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
 
-  return { totalRevenue, transactions, averageOrder, totalQuantity, available, topSale, impact };
+  return { totalRevenue, transactions, averageOrder, totalQuantity, available, topSale, stockOnHand, totalListings: inventory.length };
 }
 
 async function renderOverview() {
-  setViewHeader("Revenue, stock and impact from completed sales.", "Overview", `<button class="button button--primary" data-open-add>Add item</button>`);
+  setViewHeader("Sales, orders and stock at a glance.", "Overview", `<button class="button button--primary" data-open-add>Add item</button>`);
 
-  const [inventoryResult, salesResult, impactResult] = await Promise.all([
+  const [inventoryResult, salesResult] = await Promise.all([
     api("seller_inventory", { store_id: state.user.store_id }),
     api("sales", { store_id: state.user.store_id }),
-    api("impact", { store_id: state.user.store_id }),
   ]);
 
   if (state.view !== "overview") return;
 
   const inventory = inventoryResult.items;
   const sales = salesResult.sales;
-  const impact = impactResult.impact;
-  const kpis = sellerKpis(sales, inventory, impact);
+  const kpis = sellerKpis(sales, inventory);
   const revenueTrend = aggregateRevenueByDay(sales);
   const categories = aggregateRevenueByCategory(sales);
   const topCategory = categories[0];
 
   viewContent.innerHTML = `
-    <section class="seller-register" aria-label="Seller summary">
+    <section class="seller-register" aria-label="Seller business summary">
       <article class="revenue-register">
-        <span>Revenue recovered</span>
+        <span>Total revenue</span>
         <strong>${money(kpis.totalRevenue)}</strong>
-        <small>${kpis.transactions} completed transaction${kpis.transactions === 1 ? "" : "s"}</small>
+        <small>${kpis.transactions} completed order${kpis.transactions === 1 ? "" : "s"}</small>
       </article>
       <dl class="metric-ledger">
-        <div><dt>Available listings</dt><dd>${kpis.available}</dd><small>${inventory.length} total listed</small></div>
-        <div><dt>Average order</dt><dd>${money(kpis.averageOrder)}</dd><small>Per purchase</small></div>
-        <div><dt>Food saved</dt><dd>${quantity(impact.food_saved)} kg</dd><small>Sold, not wasted</small></div>
-        <div><dt>CO₂ avoided</dt><dd>${quantity(impact.co2_avoided)} kg</dd><small>Food saved × 2.5</small></div>
-        <div><dt>Quantity sold</dt><dd>${quantity(kpis.totalQuantity)}</dd><small>kg / units</small></div>
-        <div><dt>Highest sale</dt><dd>${money(kpis.topSale)}</dd><small>Single transaction</small></div>
+        <div><dt>Orders</dt><dd>${kpis.transactions}</dd><small>Completed purchases</small></div>
+        <div><dt>Average order</dt><dd>${money(kpis.averageOrder)}</dd><small>Revenue per order</small></div>
+        <div><dt>Quantity sold</dt><dd>${quantity(kpis.totalQuantity)}</dd><small>kg / units sold</small></div>
+        <div><dt>Highest sale</dt><dd>${money(kpis.topSale)}</dd><small>Largest single order</small></div>
+        <div><dt>Active listings</dt><dd>${kpis.available}</dd><small>${kpis.totalListings} total listings</small></div>
+        <div><dt>Stock on hand</dt><dd>${quantity(kpis.stockOnHand)}</dd><small>kg / units remaining</small></div>
       </dl>
     </section>
 

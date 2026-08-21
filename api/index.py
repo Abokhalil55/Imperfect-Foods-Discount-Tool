@@ -261,7 +261,7 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
-        self.send_json({"success": True, "message": "Imperfect Foods API is ready."})
+        self.send_json({"success": True, "message": "JimatRasa API is ready."})
 
     def do_POST(self):
         try:
@@ -277,5 +277,5 @@ class handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "8000"))
-    print(f"Imperfect Foods web app: http://127.0.0.1:{port}")
+    print(f"JimatRasa web app: http://127.0.0.1:{port}")
     ThreadingHTTPServer(("127.0.0.1", port), handler).serve_forever()
